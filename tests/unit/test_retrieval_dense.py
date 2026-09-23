@@ -107,6 +107,9 @@ def test_dense_tombstone_projection_validates_and_returns_deterministic_result(t
     recipe = EmbeddingRecipe("qwen", "rev-1", 2, "Represent the query.")
     index = QdrantHttpIndex("http://127.0.0.1:6333", collection="test", recipe=recipe)
     calls = []
+    index.delete_context_contributors = (  # type: ignore[method-assign]
+        lambda fullnames, *, snapshot_id, exclude_identities=(): 0
+    )
     index.delete_identities = lambda identities, *, snapshot_id: (  # type: ignore[method-assign]
         calls.append((identities, snapshot_id)) or len(identities)
     )
