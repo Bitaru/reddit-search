@@ -1,0 +1,62 @@
+schema_version: 1
+mode: pilot
+language_policy: english_first
+network:
+  allow_model_downloads: false
+  allow_remote_inference: false
+  allow_reddit_requests: false
+  allow_auto_publish: false
+paths:
+  data_dir: ./data
+  reports_dir: ./reports
+  sqlite_path: ./data/sqlite/reddit_search.db
+ingestion:
+  max_line_bytes: 8388608
+  batch_records: 2000
+  checkpoint_interval_records: 5000000
+  shard_target_records: 10000
+  reader_workers: 1
+  on_bad_json: quarantine_and_mark_incomplete
+  on_decompression_error: fail
+  max_staging_bytes: 10737418240
+  minimum_free_disk_bytes: 5368709120
+  max_process_rss_bytes: 4294967296
+sampling:
+  seed: 20260907
+  pilot_target_units: 30000
+  rejected_control_target: 1000
+context:
+  max_parent_messages: 4
+  focus_chunk_tokens: 512
+  focus_overlap_tokens: 64
+  retrieval_context_tokens: 1024
+  evaluation_context_tokens: 4096
+retrieval:
+  lexical_candidates_per_scenario: 100
+  dense_candidates_per_scenario: 100
+  rrf_k: 60
+  rerank_candidates: 100
+  feedback_candidates: 100
+  max_feedback_rounds: 1
+  final_review_candidates: 40
+  output_limit: 20
+  output_max_questions_per_thread: 3
+models:
+  embedding_id: Qwen/Qwen3-Embedding-0.6B
+  embedding_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  embedding_dimension: 1024
+  reranker_id: Qwen/Qwen3-Reranker-0.6B
+  reranker_revision: e61197ed45024b0ed8a2d74b80b4d909f1255473
+  device: auto
+  batch_size: 8
+qdrant:
+  url: http://127.0.0.1:6333
+review:
+  mode: manual
+  evaluator_backend: null
+  remote_request_budget: 0
+feedback:
+  enabled: false
+  strategy: average_vector
+  max_positive_examples: 5
+  max_negative_examples: 5

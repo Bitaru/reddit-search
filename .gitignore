@@ -1,0 +1,36 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+
+# Build and coverage artifacts
+build/
+dist/
+*.egg-info/
+.coverage
+coverage.xml
+htmlcov/
+
+# Runtime data and generated reports
+data/raw/
+data/staging/
+data/manifests/
+data/sqlite/
+data/models/
+data/qdrant/
+data/managed/
+data/backups/
+data/tmp/
+reports/
+reddit/
+
+# Local configuration and operating-system files
+.env
+.env.*
+!.env.example
+configs/sources.local.yaml
+.DS_Store

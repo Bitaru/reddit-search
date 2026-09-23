@@ -1,0 +1,9 @@
+# Copy this file to configs/sources.local.yaml and point it at your own authorized dumps.
+schema_version: 1
+sources:
+  - source_id: local-2026-01-submissions
+    path: /path/to/RS_2026-01.zst
+    source_kind: submission
+    declared_month: 2026-01
+    source_role: discovery
+    usage_scope: authorized_local_research

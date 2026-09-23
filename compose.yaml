@@ -1,0 +1,11 @@
+name: reddit-search
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.1
+    profiles: [semantic]
+    ports:
+      - 127.0.0.1:6333:6333
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    restart: "no"

@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local review workspace</title>
+  <style>
+    :root {
+      color: #1d2430;
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6f8;
+      -webkit-font-smoothing: antialiased;
+    }
+    * { box-sizing: border-box; }
+    body { min-width: 320px; margin: 0; }
+    button, select, input, textarea { font: inherit; }
+    button {
+      min-height: 40px;
+      padding: 0 14px;
+      color: #fff;
+      cursor: pointer;
+      background: #1d5fd0;
+      border: 0;
+      border-radius: 9px;
+      transition: background-color 120ms ease-out, transform 120ms ease-out;
+    }
+    button:hover { background: #174fae; }
+    button:active { transform: scale(.96); }
+    button.secondary { color: #253044; background: #e4e9f2; }
+    button.secondary:hover { background: #d7dfec; }
+    button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 3px solid #8db5ff;
+      outline-offset: 2px;
+    }
+    header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      color: #fff;
+      background: #14233e;
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: -.01em;
+      text-wrap: balance;
+    }
+    #progress { color: #c7d6ef; font-variant-numeric: tabular-nums; }
+    main {
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+      min-height: calc(100vh - 68px);
+    }
+    aside { padding: 16px; background: #fff; border-right: 1px solid #d8dfe9; }
+    #filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    #filters button { color: #33415a; background: #edf1f6; }
+    #filters button.active { color: #fff; background: #1d5fd0; }
+    #queue { display: grid; gap: 4px; max-height: calc(100vh - 168px); overflow: auto; }
+    .queue-item {
+      display: block;
+      width: 100%;
+      min-height: 48px;
+      padding: 8px 10px;
+      color: #263248;
+      text-align: left;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+    }
+    .queue-item:hover { background: #f1f5fa; }
+    .queue-item.selected { background: #e8f0ff; border-color: #a8c4f6; }
+    .queue-item .number { margin-right: 8px; color: #6c7a91; font-variant-numeric: tabular-nums; }
+    .queue-item .rule {
+      display: block;
+      margin: 3px 0 0 25px;
+      overflow: hidden;
+      color: #6c7a91;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    article { min-width: 0; padding: 24px; }
+    #empty { max-width: 620px; margin: 80px auto; color: #637089; text-align: center; }
+    #review {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+      gap: 20px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    .panel {
+      padding: 22px;
+      background: #fff;
+      border: 1px solid #d8dfe9;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgb(15 35 67 / .04), 0 8px 28px rgb(15 35 67 / .05);
+    }
+    .meta { margin: 0 0 10px; color: #67748b; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .rubric {
+      display: grid;
+      gap: 4px;
+      margin: 0 0 16px;
+      padding: 12px 14px;
+      color: #3d4d64;
+      background: #f5f7fb;
+      border-left: 3px solid #8db5ff;
+      border-radius: 8px;
+      line-height: 1.45;
+    }
+    .rubric strong { color: #27364d; font-size: 13px; }
+    #title {
+      margin: 0 0 16px;
+      font-size: clamp(22px, 3vw, 32px);
+      line-height: 1.15;
+      letter-spacing: -.025em;
+      text-wrap: balance;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .chip {
+      padding: 4px 8px;
+      color: #23509a;
+      font-size: 12px;
+      font-weight: 600;
+      background: #e8f0ff;
+      border-radius: 999px;
+    }
+    #source { margin: 0; overflow-wrap: anywhere; line-height: 1.58; white-space: pre-wrap; }
+    .draft { margin: 0 0 18px; padding: 14px; color: #3e4c61; background: #f5f7fb; border-radius: 10px; }
+    .draft strong { display: block; margin-bottom: 5px; color: #27364d; }
+    .field { display: grid; gap: 6px; margin: 0 0 15px; }
+    label { color: #48566b; font-size: 13px; font-weight: 600; }
+    select, input, textarea {
+      width: 100%;
+      padding: 9px 10px;
+      color: #1d2430;
+      background: #fff;
+      border: 1px solid #bac5d5;
+      border-radius: 8px;
+    }
+    textarea { min-height: 110px; line-height: 1.45; resize: vertical; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 22px; }
+    #save-state { color: #5b6980; font-size: 13px; }
+    .local-note { margin: 14px 0 0; color: #6a778d; font-size: 12px; line-height: 1.45; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      aside { border-right: 0; border-bottom: 1px solid #d8dfe9; }
+      #queue { grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); max-height: 240px; }
+      #review { grid-template-columns: 1fr; }
+      article { padding: 16px; }
+      header { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Local review workspace</h1>
+    <div id="progress">Loading…</div>
+  </header>
+  <main>
+    <aside>
+      <div id="filters">
+        <button data-filter="pending" class="active">Pending</button>
+        <button data-filter="luna">Luna relevant</button>
+        <button data-filter="all">All cards</button>
+        <button data-filter="complete">Completed</button>
+      </div>
+      <div id="queue"></div>
+    </aside>
+    <article>
+      <div id="empty" hidden>No cards match this filter.</div>
+      <div id="review" hidden>
+        <section class="panel">
+          <p class="meta" id="meta"></p>
+          <div class="rubric">
+            <strong>Scenario rubric</strong>
+            <span id="rubric-text"></span>
+          </div>
+          <h2 id="title"></h2>
+          <div class="chips" id="rules"></div>
+          <pre id="source"></pre>
+        </section>
+        <section class="panel">
+          <div class="draft" id="draft"></div>
+          <div class="field">
+            <label for="topic-fit">Topic fit</label>
+            <select id="topic-fit">
+              <option value="unreviewed">Unreviewed</option>
+              <option value="relevant">Relevant</option>
+              <option value="not_relevant">Not relevant</option>
+              <option value="uncertain">Uncertain</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="need-clarity">Need clarity</label>
+            <select id="need-clarity">
+              <option value="unreviewed">Unreviewed</option>
+              <option value="clear">Clear</option>
+              <option value="unclear">Unclear</option>
+            </select>
+          </div>
+          <div class="field"><label for="speaker-intent">Speaker intent</label><select id="speaker-intent"><option value="unreviewed">Unreviewed</option><option value="seeking_solution">Seeking solution</option><option value="describing_pain">Describing pain</option><option value="sharing_experience">Sharing experience</option><option value="answering_someone">Answering someone</option><option value="self_promotion">Self promotion</option><option value="quoting">Quoting</option><option value="unknown">Unknown</option></select></div>
+          <div class="field"><label for="product-fit">Product fit</label><select id="product-fit"><option value="not_evaluated">Not evaluated</option><option value="compatible">Compatible</option><option value="incompatible">Incompatible</option><option value="needs_clarification">Needs clarification</option></select></div>
+          <div class="field"><label for="claim-ids">Supported claim IDs (comma-separated; required for Compatible)</label><input id="claim-ids" placeholder="e.g. yourproduct.example_claim"></div>
+          <div class="field"><label for="resolution">Resolution</label><select id="resolution"><option value="unreviewed">Unreviewed</option><option value="resolved">Resolved</option><option value="no_resolution_observed">No resolution observed</option><option value="unknown">Unknown</option></select></div>
+          <div class="field">
+            <label for="duplicate-of">Duplicate of candidate ID</label>
+            <input id="duplicate-of" placeholder="Leave blank unless you identified a duplicate">
+          </div>
+          <div class="field">
+            <label for="note">Reviewer note</label>
+            <textarea id="note" maxlength="1000" placeholder="Brief reason for your decision"></textarea>
+          </div>
+          <div class="actions">
+            <button id="save">Save progress</button>
+            <button id="complete">Complete and next</button>
+            <button id="previous" class="secondary">Previous</button>
+            <button id="next" class="secondary">Next</button>
+            <span id="save-state"></span>
+          </div>
+          <p class="local-note">Local only. Saving updates the selected worksheet row; card evidence and Luna drafts are read-only.</p>
+        </section>
+      </div>
+    </article>
+  </main>
+  <script>
+    const state = { cards: [], worksheet: new Map(), drafts: new Map(), filter: "pending", selectedId: null };
+    const $ = (selector) => document.querySelector(selector);
+    const escapeText = (value) => value == null ? "" : String(value);
+    const taskKey = (row) => `${row.candidate_id}\u0000${row.scenario_id ?? ""}`;
+
+    function visibleCards() {
+      return state.cards.filter((card) => {
+        const key = taskKey(card);
+        const row = state.worksheet.get(key);
+        const draft = state.drafts.get(key);
+        if (state.filter === "pending") return row.annotation.review_status === "pending";
+        if (state.filter === "complete") return row.annotation.review_status === "complete";
+        if (state.filter === "luna") return draft?.annotation.topic_fit === "relevant";
+        return true;
+      });
+    }
+
+    function currentCard() {
+      return state.cards.find((card) => taskKey(card) === state.selectedId);
+    }
+
+    function showSaveState(message, error = false) {
+      const node = $("#save-state");
+      node.textContent = message;
+      node.style.color = error ? "#ad2937" : "#5b6980";
+    }
+
+    function renderQueue() {
+      const cards = visibleCards();
+      if (!cards.some((card) => taskKey(card) === state.selectedId)) {
+        state.selectedId = cards[0] ? taskKey(cards[0]) : null;
+      }
+      const queue = $("#queue");
+      queue.replaceChildren();
+      for (const card of cards) {
+        const key = taskKey(card);
+        const row = state.worksheet.get(key);
+        const button = document.createElement("button");
+        button.className = "queue-item" + (key === state.selectedId ? " selected" : "");
+        const number = document.createElement("span");
+        number.className = "number";
+        number.textContent = String(card.review_queue.queue_order).padStart(3, "0");
+        button.append(number, document.createTextNode(escapeText(card.source.title) || "Untitled submission"));
+        const rule = document.createElement("span");
+        rule.className = "rule";
+        rule.textContent = row.annotation.review_status === "complete"
+          ? "Completed"
+          : `${card.scenario_id || "control"} · ${card.review_queue.stratum_rule_id || "Unstratified"}`;
+        button.append(rule);
+        button.addEventListener("click", () => {
+          state.selectedId = key;
+          render();
+        });
+        queue.append(button);
+      }
+      const complete = [...state.worksheet.values()]
+        .filter((row) => row.annotation.review_status === "complete").length;
+      $("#progress").textContent = `${complete} / ${state.cards.length} complete`;
+    }
+
+    function renderCard() {
+      const card = currentCard();
+      const review = $("#review");
+      const empty = $("#empty");
+      if (!card) {
+        review.hidden = true;
+        empty.hidden = false;
+        return;
+      }
+      review.hidden = false;
+      empty.hidden = true;
+      const key = taskKey(card);
+      const row = state.worksheet.get(key);
+      const draft = state.drafts.get(key);
+      const scenario = card.scenario_id || "control";
+      $("#meta").textContent = `Queue ${card.review_queue.queue_order} · ${card.source.subreddit ? "r/" + card.source.subreddit : "submission"} · ${card.candidate_id}`;
+      $("#rubric-text").textContent = card.scenario_id
+        ? `Task ${scenario}: judge whether the focal author expresses a current need matching this scenario. Generic discussion, quoted text, and another speaker's need are not a focal-author need.`
+        : "Control task: apply the same focal-author need rubric without assuming relevance from retrieval.";
+      $("#title").textContent = escapeText(card.source.title) || "Untitled submission";
+      const rules = $("#rules");
+      rules.replaceChildren();
+      for (const ruleId of card.selection.matched_rule_ids) {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = ruleId;
+        rules.append(chip);
+      }
+      $("#source").textContent = escapeText(card.source.text);
+      const draftNode = $("#draft");
+      draftNode.replaceChildren();
+      const heading = document.createElement("strong");
+      heading.textContent = "Luna draft";
+      const summary = document.createElement("div");
+      summary.textContent = draft
+        ? `${draft.annotation.topic_fit.replace("_", " ")} · ${draft.annotation.need_clarity}${draft.annotation.reviewer_note ? " — " + draft.annotation.reviewer_note : ""}`
+        : "No machine draft available.";
+      draftNode.append(heading, summary);
+      $("#topic-fit").value = row.annotation.topic_fit;
+      $("#need-clarity").value = row.annotation.need_clarity;
+      $("#speaker-intent").value = row.annotation.speaker_intent;
+      $("#product-fit").value = row.annotation.product_fit;
+      $("#claim-ids").value = (row.annotation.supported_claim_ids || []).join(", ");
+      $("#resolution").value = row.annotation.resolution_in_available_context;
+      $("#duplicate-of").value = row.annotation.duplicate_of || "";
+      $("#note").value = row.annotation.reviewer_note || "";
+      showSaveState(row.annotation.review_status === "complete" ? "Completed" : "Pending");
+    }
+
+    function render() {
+      renderQueue();
+      renderCard();
+    }
+
+    async function save(complete) {
+      const card = currentCard();
+      if (!card) return;
+      const annotation = {
+        review_status: complete ? "complete" : "pending",
+        topic_fit: $("#topic-fit").value,
+        need_clarity: $("#need-clarity").value,
+        speaker_intent: $("#speaker-intent").value,
+        product_fit: $("#product-fit").value,
+        supported_claim_ids: $("#claim-ids").value.split(",").map((s) => s.trim()).filter(Boolean),
+        resolution_in_available_context: $("#resolution").value,
+        duplicate_of: $("#duplicate-of").value.trim() || null,
+        reviewer_note: $("#note").value.trim() || null,
+      };
+      const key = taskKey(card);
+      try {
+        const response = await fetch("/api/worksheet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidate_id: card.candidate_id,
+            scenario_id: card.scenario_id ?? null,
+            annotation,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Save failed");
+        state.worksheet.get(key).annotation = annotation;
+        showSaveState(complete ? "Completed" : "Saved");
+        if (complete) {
+          const cards = visibleCards();
+          const index = cards.findIndex((entry) => taskKey(entry) === key);
+          state.selectedId = cards[index + 1] ? taskKey(cards[index + 1])
+            : cards[index - 1] ? taskKey(cards[index - 1]) : null;
+        }
+        render();
+      } catch (error) {
+        showSaveState(error.message, true);
+      }
+    }
+
+    $("#save").addEventListener("click", () => save(false));
+    $("#complete").addEventListener("click", () => save(true));
+    $("#previous").addEventListener("click", () => {
+      const cards = visibleCards();
+      const index = cards.findIndex((card) => taskKey(card) === state.selectedId);
+      state.selectedId = cards[Math.max(0, index - 1)] ? taskKey(cards[Math.max(0, index - 1)]) : null;
+      render();
+    });
+    $("#next").addEventListener("click", () => {
+      const cards = visibleCards();
+      const index = cards.findIndex((card) => taskKey(card) === state.selectedId);
+      const next = cards[Math.min(cards.length - 1, index + 1)];
+      state.selectedId = next ? taskKey(next) : null;
+      render();
+    });
+    $("#filters").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-filter]");
+      if (!button) return;
+      state.filter = button.dataset.filter;
+      for (const item of document.querySelectorAll("#filters button")) {
+        item.classList.toggle("active", item === button);
+      }
+      render();
+    });
+
+    fetch("/api/bootstrap")
+      .then((response) => response.json())
+      .then((data) => {
+        state.cards = data.cards;
+        state.worksheet = new Map(data.worksheet.map((row) => [taskKey(row), row]));
+        state.drafts = new Map(data.drafts.map((row) => [taskKey(row), row]));
+        render();
+      })
+      .catch((error) => {
+        $("#empty").hidden = false;
+        $("#empty").textContent = `Could not load local review data: ${error.message}`;
+      });
+  </script>
+</body>
+</html>

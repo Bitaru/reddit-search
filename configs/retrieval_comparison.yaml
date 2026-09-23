@@ -1,0 +1,26 @@
+schema_version: 1
+snapshot_id: june-2026-full-corpus
+split: dev
+output_limit: 20
+review_budget: 20
+lexical_candidates: 100
+dense_candidates: 100
+rerank_candidates: 100
+feedback_candidates: 200
+rrf_k: 60
+variants:
+  - variant_id: A
+    lexical: true
+    dense: false
+    reranker: false
+    feedback: false
+  - variant_id: B
+    lexical: true
+    dense: true
+    reranker: true
+    feedback: false
+  - variant_id: C
+    lexical: true
+    dense: true
+    reranker: true
+    feedback: true

@@ -1,0 +1,1 @@
+See the canonical skill at .agents/skills/reddit-search-pipeline/SKILL.md

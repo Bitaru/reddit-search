@@ -1,0 +1,24 @@
+# Example template: replace claims with your product's real, verified evidence before relying on product-fit labels.
+app_id: example_app
+profile_version: 1
+verification_owner: "replace with the name or team responsible for verification"
+verification_status: unknown
+platforms:
+  - claim_id: example_app.iphone_app
+    status: unknown
+    version_scope: "1.0.0"
+    constraints: ["Replace with the real platform requirements before relying on this claim."]
+capabilities:
+  - claim_id: example_app.statement_import
+    status: unknown
+    version_scope: "1.0.0"
+    constraints: ["Replace with the real claim boundary: which statement formats are supported and what review step protects the ledger."]
+  - claim_id: example_app.mobile_invoicing
+    status: unknown
+    version_scope: "1.0.0"
+    constraints: ["Replace with the real claim boundary: which mobile workflow is supported for invoicing after client work."]
+pricing_claims:
+  - claim_id: example_app.free_with_iap
+    status: unknown
+    version_scope: "1.0.0"
+    constraints: ["Replace with the real pricing model description."]

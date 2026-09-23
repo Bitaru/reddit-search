@@ -1,0 +1,1 @@
+"""Local Reddit opportunity search."""

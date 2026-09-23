@@ -1,0 +1,25 @@
+scenarios:
+  # Topic-only target: no product binding, product_fit stays not_evaluated.
+  - schema_version: 1
+    scenario_id: example_app.expense_tracking
+    scenario_version: 1
+    description: Find first-person needs to track expenses without connecting a bank account.
+    lexical_queries: ["expense tracker bank", "track spending bank sync", "budget app privacy bank"]
+    semantic_queries: ["I need an expense tracker without bank sync.", "I want to budget without sharing bank access."]
+  # Claim-bound target: demonstrates the optional product-profile extension.
+  - schema_version: 1
+    scenario_id: example_app.statement_import
+    app_id: example_app
+    scenario_version: 1
+    description: Find first-person needs to import statement transactions instead of repetitive entry.
+    lexical_queries: ["import bank statement", "expense tracker csv import", "enter transactions manually"]
+    semantic_queries: ["I need to import bank statement transactions.", "I am tired of entering each expense by hand."]
+    required_claim_ids_for_fit: [example_app.statement_import]
+  - schema_version: 1
+    scenario_id: example_app.invoicing_on_the_go
+    app_id: example_app
+    scenario_version: 1
+    description: Find first-person needs to create invoices or estimates from a phone after client work.
+    lexical_queries: ["invoice from phone", "estimate after job", "mobile field service invoice"]
+    semantic_queries: ["I need to make an invoice from my phone after a job.", "I need a mobile estimate workflow for client work."]
+    required_claim_ids_for_fit: [example_app.mobile_invoicing]

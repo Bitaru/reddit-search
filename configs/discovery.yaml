@@ -1,0 +1,17 @@
+rules:
+  - rule_id: expense.no_bank_link
+    required_term_groups: [[expense, spending, budget], [bank, sync, link, privacy]]
+  - rule_id: expense.statement_import
+    required_term_groups: [[expense, transaction, spending], [statement, import, csv]]
+  - rule_id: expense.multi_currency
+    required_term_groups: [[expense, budget, spending], [currency, currencies, foreign]]
+  - rule_id: expense.shared_tracking
+    required_term_groups: [[expense, budget, spending], [shared, couple, household]]
+  - rule_id: invoicing.occasional_invoices
+    required_term_groups: [[invoice, invoices], [subscription, occasional, monthly]]
+  - rule_id: invoicing.field_service_mobile
+    required_term_groups: [[invoice, estimate], [phone, mobile, job]]
+  - rule_id: invoicing.notes_to_line_items
+    required_term_groups: [[invoice, estimate], [notes, description, line]]
+  - rule_id: invoicing.simple_documents
+    required_term_groups: [[invoice, estimate], [word, spreadsheet, document]]
