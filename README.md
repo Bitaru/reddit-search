@@ -53,6 +53,7 @@ before downloading. Use only data you are authorized to process, then point
 5. Evaluate scores saved runs against reviewed labels and preserves the input
    hashes behind each report.
 
+![The pipeline](./docs/reddit-opportunity-search-how-it-works.svg)
 ## Configure your data
 
 ### Declare source dumps
