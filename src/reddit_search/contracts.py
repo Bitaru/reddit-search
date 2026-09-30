@@ -25,6 +25,7 @@ class ProductClaim(StrictModel):
     claim_id: Annotated[str, Field(min_length=1)]
     status: ClaimStatus = ClaimStatus.UNKNOWN
     evidence_ref: str | None = None
+    statement: str | None = None
     version_scope: str | None = None
     constraints: list[str] = Field(default_factory=list)
 

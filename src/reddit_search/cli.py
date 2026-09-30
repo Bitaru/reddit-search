@@ -8,6 +8,7 @@ import logging
 import os
 import sqlite3
 import sys
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Annotated
@@ -28,6 +29,26 @@ from .corpus.baseline import build_corpus_index, run_lexical_scenarios
 from .corpus.units import CHUNKING_VERSION, CONTEXT_RECIPE_VERSION
 from .demo import run_synthetic_demo
 from .doctor import collect_doctor_report
+from .engagement.context import build_thread_context
+from .engagement.drafting import append_human_edit, prepare_reply_draft
+from .engagement.handoff import (
+    _private_destination,
+    _write_private_json,
+    export_handoff,
+    summarize_pilot,
+)
+from .engagement.local_model import LocalModelError
+from .engagement.review import (
+    FALSE_POSITIVE_CRITERION,
+    FALSE_POSITIVE_CRITERION_VERSION,
+    FalsePositiveAdjudication,
+    append_false_positive_adjudication,
+    engagement_identity,
+    read_reviews,
+    review_sha256,
+)
+from .engagement.shortlist import build_shortlist
+from .engagement.workspace import create_engagement_server
 from .evaluation.archive_audit import audit_registered_archives
 from .evaluation.archive_coverage import derive_archive_coverage
 from .evaluation.archive_partitioned import audit_registered_archives_partitioned
@@ -92,6 +113,8 @@ retrieval_app = typer.Typer(help="Build local dense retrieval artifacts.")
 report_app = typer.Typer(help="Produce deterministic operational and topic reports.")
 findings_app = typer.Typer(help="Export judged-relevant findings from reviewed labels.")
 tombstones_app = typer.Typer(help="Durable tombstone outbox inventory and local replay.")
+engagement_app = typer.Typer(help="Build offline archive-engagement review artifacts.")
+_ENGAGEMENT_PROMPTS = Path(__file__).resolve().parents[2] / "configs" / "prompts" / "engagement"
 app.add_typer(config_app, name="config")
 app.add_typer(profiles_app, name="profiles")
 app.add_typer(sources_app, name="sources")
@@ -104,6 +127,548 @@ app.add_typer(retrieval_app, name="retrieval")
 app.add_typer(report_app, name="report")
 app.add_typer(findings_app, name="findings")
 app.add_typer(tombstones_app, name="tombstones")
+app.add_typer(engagement_app, name="engagement")
+
+
+@engagement_app.command("shortlist")
+def engagement_shortlist(
+    selection: Annotated[
+        Path, typer.Option("--selection", help="Frozen selected-message JSONL.zst shard.")
+    ],
+    selection_manifest: Annotated[
+        Path, typer.Option("--selection-manifest", help="Manifest verifying the selection shard.")
+    ],
+    registry: Annotated[
+        Path, typer.Option("--registry", help="Explicit registered-source JSON file.")
+    ],
+    output: Annotated[
+        Path, typer.Option("--output", help="Fresh output directory for shortlist artifacts.")
+    ],
+    app_id: Annotated[
+        str, typer.Option("--app-id", help="Product/application identity for this review.")
+    ],
+    ranked_directory: Annotated[
+        Path | None,
+        typer.Option("--ranked-directory", help="Optional frozen ranked scenario directory."),
+    ] = None,
+    run_manifest: Annotated[
+        Path | None,
+        typer.Option("--run-manifest", help="Manifest for optional ranked scenario inputs."),
+    ] = None,
+    tombstones: Annotated[
+        Path | None, typer.Option("--tombstones", help="Optional tombstone ledger.")
+    ] = None,
+    target_allowlist: Annotated[
+        Path | None,
+        typer.Option(
+            "--target-allowlist", help="Optional UTF-8 JSON array of exact target fullnames."
+        ),
+    ] = None,
+) -> None:
+    try:
+        report = build_shortlist(
+            selection,
+            selection_manifest,
+            registry,
+            output,
+            app_id,
+            ranked_directory=ranked_directory,
+            run_manifest_path=run_manifest,
+            tombstones_path=tombstones,
+            target_allowlist_path=target_allowlist,
+        )
+    except (OSError, ValueError) as error:
+        typer.echo(json.dumps({"built": False, "error": str(error)}, sort_keys=True), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(json.dumps({"built": True, **report}, sort_keys=True))
+
+
+@engagement_app.command("context")
+def engagement_context(
+    candidates: Annotated[
+        Path, typer.Option("--candidates", help="Frozen shortlist candidates JSONL.")
+    ],
+    shortlist_manifest: Annotated[
+        Path, typer.Option("--shortlist-manifest", help="Manifest verifying the shortlist.")
+    ],
+    registry: Annotated[
+        Path, typer.Option("--registry", help="Explicit registered-source JSON file.")
+    ],
+    output: Annotated[
+        Path, typer.Option("--output", help="Fresh output directory for context artifacts.")
+    ],
+    tombstones: Annotated[
+        Path | None, typer.Option("--tombstones", help="Optional tombstone ledger.")
+    ] = None,
+    max_messages_per_thread: Annotated[
+        int,
+        typer.Option("--max-messages-per-thread", min=1, help="Positive per-thread message cap."),
+    ] = 100_000,
+    max_bytes_per_thread: Annotated[
+        int, typer.Option("--max-bytes-per-thread", min=1, help="Positive per-thread byte cap.")
+    ] = 67_108_864,
+    max_staging_bytes: Annotated[
+        int, typer.Option("--max-staging-bytes", min=1, help="Positive total staging byte cap.")
+    ] = 2_147_483_648,
+) -> None:
+    try:
+        report = build_thread_context(
+            candidates,
+            shortlist_manifest,
+            registry,
+            output,
+            tombstones_path=tombstones,
+            max_messages_per_thread=max_messages_per_thread,
+            max_bytes_per_thread=max_bytes_per_thread,
+            max_staging_bytes=max_staging_bytes,
+        )
+    except (OSError, ValueError) as error:
+        typer.echo(json.dumps({"built": False, "error": str(error)}, sort_keys=True), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(json.dumps({"built": True, **report}, sort_keys=True))
+
+
+@engagement_app.command("draft")
+def engagement_draft(
+    app_id: Annotated[str, typer.Option("--app-id", help="Reviewed product/application identity.")],
+    thread_fullname: Annotated[
+        str, typer.Option("--thread-fullname", help="Exact Reddit submission fullname.")
+    ],
+    reply_target_fullname: Annotated[
+        str, typer.Option("--reply-target-fullname", help="Exact reviewed reply target fullname.")
+    ],
+    context_bundle: Annotated[
+        Path, typer.Option("--context-bundle", help="Hash-bound compressed thread context bundle.")
+    ],
+    context_manifest: Annotated[
+        Path, typer.Option("--context-manifest", help="Manifest for the frozen context bundle.")
+    ],
+    expected_context_manifest_sha256: Annotated[
+        str,
+        typer.Option("--expected-context-manifest-sha256", help="Pinned context-manifest SHA-256."),
+    ],
+    review_journal: Annotated[
+        Path, typer.Option("--review-journal", help="Append-only engagement review journal.")
+    ],
+    history: Annotated[
+        Path, typer.Option("--history", help="Append-only qualification and draft history.")
+    ],
+    product_profile: Annotated[
+        Path | None, typer.Option("--product-profile", help="Optional owner-approved profile.")
+    ] = None,
+    qualification_prompt: Annotated[
+        Path, typer.Option("--qualification-prompt", help="Versioned local qualification prompt.")
+    ] = _ENGAGEMENT_PROMPTS / "qualification-v2.txt",
+    draft_prompt: Annotated[
+        Path, typer.Option("--draft-prompt", help="Versioned local drafting prompt.")
+    ] = _ENGAGEMENT_PROMPTS / "draft-v3.txt",
+    affiliation: Annotated[
+        str, typer.Option("--affiliation", help="Truthful operator affiliation for any draft.")
+    ] = "",
+    llama_cpp_executable: Annotated[
+        Path | None,
+        typer.Option("--llama-cpp-executable", help="Explicit local llama-completion tool."),
+    ] = None,
+    model_path: Annotated[
+        Path | None, typer.Option("--model-path", help="Explicit local model file.")
+    ] = None,
+    model_version: Annotated[
+        str, typer.Option("--model-version", help="Version/name identifying the local model.")
+    ] = "",
+) -> None:
+    """Append an offline qualification, abstention, or local draft; never posts."""
+    configured_version = model_version
+    if not configured_version and (llama_cpp_executable is None or model_path is None):
+        configured_version = "local-generator-not-configured"
+    try:
+        record = prepare_reply_draft(
+            expected_app_id=app_id,
+            expected_thread_fullname=thread_fullname,
+            expected_reply_target_fullname=reply_target_fullname,
+            context_bundle_path=context_bundle,
+            context_manifest_path=context_manifest,
+            expected_context_manifest_sha256=expected_context_manifest_sha256,
+            review_journal_path=review_journal,
+            product_profile_path=product_profile,
+            qualification_prompt_path=qualification_prompt,
+            draft_prompt_path=draft_prompt,
+            history_path=history,
+            operator_affiliation=affiliation,
+            llama_cpp_executable=llama_cpp_executable,
+            model_path=model_path,
+            model_version=configured_version,
+        )
+    except (OSError, ValueError, ValidationError, LocalModelError) as error:
+        typer.echo(json.dumps({"status": "error", "reason": str(error)}, sort_keys=True), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(
+        json.dumps(
+            {
+                "status": record.outcome,
+                "hashes": {
+                    "record": record.record_sha256,
+                    "context_bundle": record.context_bundle_sha256,
+                    "context_manifest": record.context_manifest_sha256,
+                    "review": record.review_sha256,
+                    "review_journal": record.review_journal_sha256,
+                    "product_profile": record.product_profile_sha256,
+                    "qualification_prompt": record.qualification_prompt_sha256,
+                    "draft_prompt": record.draft_prompt_sha256,
+                    "model": record.model_sha256,
+                },
+                "reasons": record.abstention_reasons,
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@engagement_app.command("edit")
+def engagement_edit(
+    history: Annotated[
+        Path, typer.Option("--history", help="Append-only qualification and draft history.")
+    ],
+    prior_record_sha256: Annotated[
+        str, typer.Option("--prior-record-sha256", help="Hash of the latest draft record.")
+    ],
+    text_file: Annotated[
+        Path, typer.Option("--text-file", help="UTF-8 file containing the edited draft text.")
+    ],
+    editor: Annotated[str, typer.Option("--editor", help="Human editor identity.")],
+) -> None:
+    """Append and report a human edit without printing its draft text."""
+    try:
+        record = append_human_edit(
+            history,
+            prior_record_sha256=prior_record_sha256,
+            edited_text=text_file.read_text(encoding="utf-8"),
+            editor=editor,
+        )
+    except (OSError, ValueError, ValidationError) as error:
+        typer.echo(json.dumps({"status": "error", "reason": str(error)}, sort_keys=True), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(
+        json.dumps(
+            {
+                "status": "valid" if record.human_edit_valid else "invalid",
+                "record_sha256": record.record_sha256,
+                "human_edit_findings": record.human_edit_issues,
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@engagement_app.command("handoff")
+def engagement_handoff(
+    app_id: Annotated[str, typer.Option("--app-id", help="Reviewed product/application identity.")],
+    thread_fullname: Annotated[
+        str, typer.Option("--thread-fullname", help="Exact Reddit submission fullname.")
+    ],
+    reply_target_fullname: Annotated[
+        str, typer.Option("--reply-target-fullname", help="Exact reviewed reply target fullname.")
+    ],
+    context_bundle: Annotated[
+        Path, typer.Option("--context-bundle", help="Hash-bound compressed thread context bundle.")
+    ],
+    context_manifest: Annotated[
+        Path, typer.Option("--context-manifest", help="Manifest for the frozen context bundle.")
+    ],
+    expected_context_manifest_sha256: Annotated[
+        str,
+        typer.Option("--expected-context-manifest-sha256", help="Pinned context-manifest SHA-256."),
+    ],
+    review_journal: Annotated[
+        Path, typer.Option("--review-journal", help="Append-only engagement review journal.")
+    ],
+    draft_history: Annotated[
+        Path, typer.Option("--draft-history", help="Append-only qualification and draft history.")
+    ],
+    registry: Annotated[
+        Path, typer.Option("--registry", help="Explicit registered-source JSON file.")
+    ],
+    output: Annotated[
+        Path, typer.Option("--output", help="New handoff JSON path under gitignored reports/.")
+    ],
+) -> None:
+    """Export a private offline handoff packet; never contacts Reddit or posts."""
+    try:
+        report = export_handoff(
+            app_id=app_id,
+            thread_fullname=thread_fullname,
+            reply_target_fullname=reply_target_fullname,
+            context_bundle_path=context_bundle,
+            context_manifest_path=context_manifest,
+            expected_context_manifest_sha256=expected_context_manifest_sha256,
+            review_journal_path=review_journal,
+            draft_history_path=draft_history,
+            registry_path=registry,
+            output_path=output,
+        )
+    except (OSError, ValueError, ValidationError) as error:
+        typer.echo(json.dumps({"exported": False, "error": str(error)}, sort_keys=True), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(
+        json.dumps(
+            {
+                "exported": True,
+                "output_path": report["output_path"],
+                "output_sha256": report["output_sha256"],
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@engagement_app.command("adjudicate")
+def engagement_adjudicate(
+    review_journal: Annotated[
+        Path, typer.Option("--review-journal", help="Journal containing the exact review to label.")
+    ],
+    adjudication_journal: Annotated[
+        Path, typer.Option("--adjudication-journal", help="Private append-only adjudication JSONL.")
+    ],
+    label: Annotated[
+        str,
+        typer.Option(
+            "--label",
+            help=(
+                "Human label. "
+                f"{FALSE_POSITIVE_CRITERION_VERSION}: {FALSE_POSITIVE_CRITERION}"
+            ),
+        ),
+    ],
+    adjudicator: Annotated[str, typer.Option("--adjudicator", help="Adjudicator identity.")],
+    adjudicated_at: Annotated[
+        str, typer.Option("--adjudicated-at", help="UTC ISO-8601 timestamp.")
+    ],
+    review_sha: Annotated[
+        str | None, typer.Option("--review-sha256", help="SHA-256 of the exact review record.")
+    ] = None,
+    app_id: Annotated[
+        str | None, typer.Option("--app-id", help="Review identity: application identifier.")
+    ] = None,
+    thread_fullname: Annotated[
+        str | None, typer.Option("--thread-fullname", help="Review identity: submission fullname.")
+    ] = None,
+    reply_target_fullname: Annotated[
+        str | None,
+        typer.Option("--reply-target-fullname", help="Review identity: target fullname."),
+    ] = None,
+    note: Annotated[str | None, typer.Option("--note", help="Optional short rationale.")] = None,
+) -> None:
+    """Record a human label using engagement-fp-v1 and its explicit decision boundary."""
+    try:
+        has_identity = any(
+            value is not None for value in (app_id, thread_fullname, reply_target_fullname)
+        )
+        has_complete_identity = all(
+            value is not None for value in (app_id, thread_fullname, reply_target_fullname)
+        )
+        if (review_sha is not None and has_identity) or (
+            review_sha is None and not has_complete_identity
+        ):
+            raise ValueError(
+                "provide either --review-sha256 or all of --app-id, --thread-fullname, "
+                "and --reply-target-fullname, but not both"
+            )
+        reviews = read_reviews(review_journal)
+        latest = {}
+        for item in reviews:
+            item_identity = engagement_identity(item)
+            previous = latest.get(item_identity)
+            if previous is None or item.reviewed_at > previous.reviewed_at:
+                latest[item_identity] = item
+            elif item.reviewed_at == previous.reviewed_at:
+                raise ValueError("ambiguous same-time review records for one identity")
+        if review_sha is not None:
+            matching = [review for review in reviews if review_sha256(review) == review_sha]
+            if len(matching) != 1:
+                raise ValueError("review_sha256 must identify exactly one review record")
+            review = matching[0]
+            if latest.get(engagement_identity(review)) != review:
+                raise ValueError("cannot adjudicate a superseded review")
+        else:
+            identity = (app_id, thread_fullname, reply_target_fullname)
+            review = latest.get(identity)
+            if review is None:
+                raise ValueError("no review found for the supplied identity")
+            review_sha = review_sha256(review)
+        record = FalsePositiveAdjudication(
+            app_id=review.app_id,
+            thread_fullname=review.thread_fullname,
+            reply_target_fullname=review.reply_target_fullname,
+            bundle_sha256=review.bundle_sha256,
+            review_sha256=review_sha,
+            review_verdict=review.verdict,
+            label=label,
+            criterion_version=FALSE_POSITIVE_CRITERION_VERSION,
+            adjudicator=adjudicator,
+            adjudicated_at=adjudicated_at,
+            note=note,
+        )
+        append_false_positive_adjudication(
+            adjudication_journal, record, expected_bundle_sha256=review.bundle_sha256
+        )
+    except (OSError, ValueError, ValidationError) as error:
+        typer.echo(json.dumps({"recorded": False, "error": str(error)}, sort_keys=True), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(
+        json.dumps(
+            {
+                "recorded": True,
+                "review_sha256": review_sha,
+                "criterion_version": record.criterion_version,
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@engagement_app.command("pilot-report")
+def engagement_pilot_report(
+    review_journal: Annotated[
+        Path, typer.Option("--review-journal", help="Append-only engagement review journal.")
+    ],
+    draft_history: Annotated[
+        Path, typer.Option("--draft-history", help="Append-only qualification and draft history.")
+    ],
+    output: Annotated[
+        Path, typer.Option("--output", help="New summary JSON path under gitignored reports/.")
+    ],
+    manual_check_journal: Annotated[
+        Path | None,
+        typer.Option("--manual-check-journal", help="Optional append-only manual-check journal."),
+    ] = None,
+    adjudication_journal: Annotated[
+        Path | None,
+        typer.Option(
+            "--adjudication-journal",
+            help=(
+                "Optional false-positive adjudication journal; labels are explicit human judgments."
+            ),
+        ),
+    ] = None,
+) -> None:
+    """Write a private aggregate summary of actual engagement pilot records."""
+    try:
+        destination = _private_destination(output, Path(__file__).resolve().parents[2])
+        if manual_check_journal is None:
+            with tempfile.TemporaryDirectory(prefix="reddit-search-no-manual-checks-") as temp_dir:
+                summary = summarize_pilot(
+                    review_journal_path=review_journal,
+                    draft_history_path=draft_history,
+                    manual_check_journal_path=Path(temp_dir) / "not-provided.jsonl",
+                    false_positive_adjudication_journal_path=adjudication_journal,
+                )
+        else:
+            summary = summarize_pilot(
+                review_journal_path=review_journal,
+                draft_history_path=draft_history,
+                manual_check_journal_path=manual_check_journal,
+                false_positive_adjudication_journal_path=adjudication_journal,
+            )
+        _write_private_json(destination, summary)
+    except (OSError, ValueError, ValidationError) as error:
+        typer.echo(json.dumps({"written": False, "error": str(error)}, sort_keys=True), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(json.dumps({"written": True, "output_path": str(destination)}, sort_keys=True))
+
+
+@engagement_app.command("serve")
+def engagement_serve(
+    candidates: Annotated[
+        Path,
+        typer.Option(
+            "--candidates", exists=True, readable=True, help="Shortlisted candidate JSONL."
+        ),
+    ],
+    shortlist_manifest: Annotated[
+        Path,
+        typer.Option(
+            "--shortlist-manifest", exists=True, readable=True, help="Manifest for the shortlist."
+        ),
+    ],
+    context_bundle: Annotated[
+        Path,
+        typer.Option(
+            "--context-bundle", exists=True, readable=True, help="Compressed thread-context bundle."
+        ),
+    ],
+    context_manifest: Annotated[
+        Path,
+        typer.Option(
+            "--context-manifest",
+            exists=True,
+            readable=True,
+            help="Manifest for the context bundle.",
+        ),
+    ],
+    registry: Annotated[
+        Path,
+        typer.Option(
+            "--registry", exists=True, readable=True, help="Source registry for captured context."
+        ),
+    ],
+    decisions: Annotated[
+        Path,
+        typer.Option("--decisions", help="Append-only archive-decision JSONL path."),
+    ],
+    manual_checks: Annotated[
+        Path,
+        typer.Option("--manual-checks", help="Append-only live-check JSONL path."),
+    ],
+    draft_history: Annotated[
+        Path | None,
+        typer.Option(
+            "--draft-history",
+            exists=True,
+            readable=True,
+            help="Optional append-only ReplyDraft history JSONL.",
+        ),
+    ] = None,
+    product_profile: Annotated[
+        Path | None,
+        typer.Option(
+            "--product-profile",
+            exists=True,
+            readable=True,
+            help="Optional ProductProfile YAML or JSON.",
+        ),
+    ] = None,
+    host: Annotated[
+        str,
+        typer.Option("--host", help="Loopback IP address to bind; non-loopback hosts are refused."),
+    ] = "127.0.0.1",
+    port: Annotated[
+        int, typer.Option("--port", min=0, max=65535, help="Loopback port; 0 selects a free port.")
+    ] = 8765,
+) -> None:
+    """Serve the local archive engagement review workspace."""
+    try:
+        server = create_engagement_server(
+            candidates_path=candidates,
+            shortlist_manifest_path=shortlist_manifest,
+            context_path=context_bundle,
+            context_manifest_path=context_manifest,
+            registry_path=registry,
+            review_journal_path=decisions,
+            manual_check_journal_path=manual_checks,
+            draft_history_path=draft_history,
+            profile_path=product_profile,
+            host=host,
+            port=port,
+        )
+    except (OSError, ValueError, ValidationError, yaml.YAMLError) as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=2) from error
+    typer.echo(str(server.engagement_server_report["url"]))
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
 
 
 def configure_logging() -> None:

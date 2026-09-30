@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Archive engagement review</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #18212b; background: #f2f5f8; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; }
+    header { padding: 22px max(20px, calc((100vw - 1160px) / 2)); background: #182f46; color: white; }
+    header h1 { margin: 0; font-size: 1.5rem; text-wrap: balance; }
+    header p { margin: 4px 0 0; color: #d5e2ee; }
+    main { max-width: 1200px; margin: auto; padding: 20px; }
+    .panel { background: white; border: 1px solid #d4dde5; border-radius: 10px; padding: 20px; min-width: 0; }
+    .queue { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 16px; margin-top: 16px; align-items: start; }
+    h2 { margin: 0 0 8px; font-size: 1.2rem; text-wrap: balance; }
+    h3 { margin: 16px 0 6px; font-size: 1rem; }
+    p { text-wrap: pretty; }
+    label { display: block; margin: 12px 0 5px; font-weight: 650; }
+    input, select, textarea, button { font: inherit; }
+    input:not([type="radio"]), select, textarea { width: 100%; border: 1px solid #aebdca; border-radius: 6px; padding: 10px; background: white; color: inherit; }
+    textarea { min-height: 78px; resize: vertical; }
+    button { min-height: 44px; padding: 10px 16px; color: white; background: #125f92; border: 0; border-radius: 6px; font-weight: 700; cursor: pointer; transition: background-color 180ms ease; }
+    button:hover { background: #0d4d77; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #3586bf; outline-offset: 2px; }
+    .secondary { background: #e7edf2; color: #182f46; }
+    .secondary:hover { background: #d3eafa; }
+    .muted { color: #475569; }
+    .small { font-size: .9rem; }
+    .warning { padding: 10px; border-left: 4px solid #b96a10; background: #fff3d8; color: #59310a; }
+    .notice { padding: 10px; border-left: 4px solid #536a7a; background: #eef3f6; color: #263b49; }
+    .message { border: 1px solid #d8e0e7; border-radius: 8px; padding: 13px; margin: 12px 0; overflow-wrap: anywhere; }
+    .message.selected { border-color: #176b9e; box-shadow: 0 0 0 2px #d3eafa; }
+    .message.branch { margin-left: min(calc(var(--depth) * 22px), 40%); }
+    .message .body { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 6px; }
+    .message strong { display: block; }
+    .choice { display: flex; align-items: flex-start; gap: 12px; margin: 8px 0; padding: 12px; min-height: 50px; border: 1px solid #cbd5df; border-radius: 8px; cursor: pointer; font-weight: 500; }
+    .choice:has(input:checked) { border-color: #176b9e; background: #eef7fc; box-shadow: inset 0 0 0 1px #176b9e; }
+    .choice input { margin: 5px 0 0; flex: 0 0 auto; accent-color: #125f92; }
+    .choice span { overflow-wrap: anywhere; }
+    .choice small { display: block; color: #475569; font-weight: 400; }
+    .choice:has(input:disabled) { opacity: .55; cursor: not-allowed; }
+    fieldset { margin: 14px 0 0; padding: 0; border: 0; min-width: 0; }
+    legend { padding: 0; font-weight: 700; }
+    details { margin-top: 14px; }
+    summary { min-height: 44px; padding: 9px 0; cursor: pointer; font-weight: 650; }
+    #progress-text { margin: 0 0 8px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    progress { width: 100%; height: 10px; accent-color: #176b9e; }
+    #reviewer-block { max-width: 340px; margin-top: 12px; }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; }
+    .history { padding: 10px 0; border-top: 1px solid #e1e6eb; overflow-wrap: anywhere; }
+    .summary-list { list-style: none; padding: 0; }
+    .summary-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #e1e6eb; }
+    .summary-list li span { min-width: 0; overflow-wrap: anywhere; }
+    @media (max-width: 820px) { .queue { grid-template-columns: 1fr; } .panel { padding: 16px; } main { padding: 16px; } }
+    @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Review conversations</h1>
+  <p>One conversation at a time. Save your answer to move on. No live Reddit check or posting happens here.</p>
+</header>
+<main>
+  <section class="panel" id="progress-panel">
+    <p id="progress-text" role="status" aria-live="polite">Loading conversations…</p>
+    <progress id="progress" max="1" value="0"></progress>
+    <div id="reviewer-block"><label for="reviewer">Your name (enter once)</label><input id="reviewer" autocomplete="name" required></div>
+  </section>
+  <p id="load-error" class="error" role="alert"></p>
+  <div id="queue" class="queue" hidden>
+    <section class="panel" aria-labelledby="conversation-title">
+      <h2 id="conversation-title">Conversation</h2>
+      <p id="identity" class="muted small"></p>
+      <p id="archive-live-status" class="notice small"></p>
+      <div id="manual-check-history" class="small"></div>
+      <p id="coverage-warning" class="warning" hidden></p>
+      <p id="archive-content-note" class="notice" hidden></p>
+      <p class="muted small">Read the highlighted message and the captured replies before answering.</p>
+      <button id="jump-to-answer" type="button" class="secondary">Jump to answer</button>
+      <h3>Reply target ancestry</h3>
+      <ol id="parent-chain" class="small" aria-label="Ancestor chain from submission root to reply target"></ol>
+      <div id="thread"></div>
+      <h3>Draft and prompt history</h3>
+      <p id="draft-history-availability" class="muted small"></p>
+      <div id="draft-history" aria-live="polite"></div>
+      <details>
+        <summary>Archive sources and previous decisions</summary>
+        <p id="coverage" class="small"></p>
+        <div id="scopes" class="small"></div>
+        <div id="review-history" class="small"></div>
+      </details>
+    </section>
+    <section class="panel" aria-labelledby="question-title">
+      <h2 id="question-title">What did you find?</h2>
+      <p id="saved-state" class="muted small"></p>
+      <form id="review-form">
+        <fieldset id="outcomes">
+          <legend>Choose one answer</legend>
+          <label class="choice"><input type="radio" name="outcome" value="reject" required><span>Skip this conversation<small>No useful product reply here.</small></span></label>
+          <label class="choice"><input type="radio" name="outcome" value="needs_context"><span>Not sure yet<small>Keep it for later. This is not a potential reply.</small></span></label>
+          <label class="choice"><input type="radio" name="outcome" value="provisional_candidate"><span>Potential reply<small>I found a first-person need, no captured answer and a verified product fit.</small></span></label>
+        </fieldset>
+        <p id="potential-warning" class="warning small" hidden></p>
+        <div id="skip-fields" hidden>
+          <label for="skip-reason">Why skip it?</label>
+          <select id="skip-reason">
+            <option value="">Choose a reason</option>
+            <option value="no_need">Not a relevant personal request</option>
+            <option value="tester">Tester request or self-promotion</option>
+            <option value="quoted">Quoted or someone else's need</option>
+            <option value="answered">Already answered in the captured conversation</option>
+            <option value="incompatible">The product does not meet this need</option>
+            <option value="other">Another reason (explain below)</option>
+          </select>
+          <div id="answer-fields" hidden>
+            <label for="answer-source">Which captured message answered it?</label>
+            <select id="answer-source"></select>
+          </div>
+        </div>
+        <div id="claim-fields" hidden>
+          <fieldset id="claim-options"><legend>Which verified claim supports the fit?</legend></fieldset>
+          <p class="muted small">Choose the strongest match. Read its limits before selecting it.</p>
+        </div>
+        <label for="note" id="note-label">Note (optional)</label>
+        <textarea id="note" placeholder="Add context if the answer alone does not explain your decision."></textarea>
+        <p id="form-message" class="error" role="alert"></p>
+        <div class="actions">
+          <button id="save-next" type="submit">Save &amp; next</button>
+          <button id="previous" type="button" class="secondary" hidden>Previous conversation</button>
+        </div>
+      </form>
+    </section>
+  </div>
+  <section id="done" class="panel" hidden>
+    <h2>Thank you. All conversations have an archive decision.</h2>
+    <p>These are review decisions, not live-page checks or permission to post. Potential replies still require a separate human check of the current page and community rules.</p>
+    <ul id="summary" class="summary-list"></ul>
+    <details id="live-details" hidden>
+      <summary>Optional: record a human live-page check for a potential reply</summary>
+      <p class="muted">Open Reddit yourself first. Check the target, newer replies and community rules. Nothing is posted by this workspace.</p>
+      <form id="manual-form">
+        <label for="live-target">Potential reply</label><select id="live-target"></select>
+        <label for="live">What did you observe?</label>
+        <select id="live"><option value="live_unverified">Not checked</option><option value="human_checked_replyable">Checked: replyable</option><option value="live_not_replyable">Checked: not replyable</option><option value="live_unavailable">Page unavailable</option></select>
+        <label for="permalink">Observed permalink</label><input id="permalink" type="url">
+        <label for="observation">What did you see?</label><textarea id="observation"></textarea>
+        <label for="rules">Community rules you checked (one per line)</label><textarea id="rules"></textarea>
+        <label for="final-decision">Your final decision</label>
+        <select id="final-decision"><option value="">Not decided</option><option value="post">Post manually</option><option value="do_not_post">Do not post</option><option value="defer">Defer</option></select>
+        <p id="manual-message" role="status" aria-live="polite"></p>
+        <button type="submit">Save live-page observation</button>
+      </form>
+    </details>
+  </section>
+  <section id="empty" class="panel" hidden><h2>No conversations to review</h2><p>Provide a shortlist and context bundle to begin.</p></section>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const data = { candidates: [], profile: null };
+  const choices = {
+    no_need: { reason: "Not a relevant personal request.", author_need: "no_need", code: "no_useful_reply" },
+    tester: { reason: "Tester request or self-promotion.", author_need: "tester_or_self_promotion", code: "self_promotion_or_tester_request" },
+    quoted: { reason: "Quoted or someone else's need.", author_need: "quoted_or_other_person", code: "quoted_or_other_person" },
+    answered: { reason: "Already answered in the captured conversation.", answered_in_available_context: "yes", code: "need_already_answered" },
+    incompatible: { reason: "The product does not meet this need.", product_fit: "incompatible", code: "product_incompatible" },
+    other: { reason: "No useful product reply for another reason.", code: "no_useful_reply" }
+  };
+  let index = 0;
+  let revisiting = false;
+  let saving = false;
+  let dirty = false;
+  const text = (id, value) => { $(id).textContent = value == null ? "" : String(value); };
+  const node = (tag, content, className = "") => {
+    const item = document.createElement(tag);
+    item.textContent = content || "";
+    item.className = className;
+    return item;
+  };
+  const latest = (candidate) => (candidate.review_history || []).at(-1);
+  const completed = (candidate) => {
+    const review = latest(candidate);
+    return Boolean(review && !review.reason.startsWith("Quick triage: "));
+  };
+  const selectedOutcome = () => document.querySelector('input[name="outcome"]:checked')?.value;
+  const verifiedClaims = (candidate) => data.profile?.app_id === candidate.app_id
+    && data.profile.verification_status === "verified" && !data.profile.synthetic
+    ? (candidate.profile_claims || []).filter((claim) => claim.status === "verified" && claim.evidence_ref)
+    : [];
+  const potentialAllowed = (candidate) => candidate.context_complete && !candidate.root_removed
+    && !candidate.target_warning && (candidate.messages || []).filter((row) => row.fullname === candidate.reply_target_fullname).length === 1
+    && verifiedClaims(candidate).length > 0;
+  const outcomeFor = (review) => {
+    if (!review) return "";
+    if (review.reason.startsWith("Quick triage: ")) return review.verdict === "reject" ? "reject" : "";
+    return review.verdict;
+  };
+  const skipFor = (review) => {
+    if (!review || review.verdict !== "reject") return "";
+    if (review.author_need === "tester_or_self_promotion") return "tester";
+    if (review.author_need === "quoted_or_other_person") return "quoted";
+    if (review.author_need === "no_need") return "no_need";
+    if (review.answered_in_available_context === "yes") return "answered";
+    if (review.product_fit === "incompatible") return "incompatible";
+    return "other";
+  };
+  const updateFields = () => {
+    const outcome = selectedOutcome();
+    $("skip-fields").hidden = outcome !== "reject";
+    $("claim-fields").hidden = outcome !== "provisional_candidate";
+    $("answer-fields").hidden = outcome !== "reject" || $("skip-reason").value !== "answered";
+    $("skip-reason").required = outcome === "reject";
+    $("answer-source").required = !$("answer-fields").hidden;
+    $("note").required = outcome === "provisional_candidate" || (outcome === "reject" && $("skip-reason").value === "other");
+    text("note-label", $("note").required ? "Why is this the right decision?" : "Note (optional)");
+  };
+  const manualCheckHistory = (candidate) => {
+    const host = $("manual-check-history");
+    host.replaceChildren();
+    const checks = candidate.manual_check_history || [];
+    const newest = checks.at(-1);
+    const liveStatus = candidate.live_status ?? "live_unverified";
+    host.append(node("h3", "Past human live-page observations"));
+    host.append(node("p", "These are past human observations, not live truth or a guarantee of current state. This program never posts."));
+    if (!newest) {
+      host.append(node("p", `Live status: ${liveStatus}. No manual check is recorded; only a human can change this status.`));
+      host.append(node("p", "Final human decision: None."));
+      return;
+    }
+    const current = node("div", "", "history");
+    current.append(node("strong", "Newest recorded human observation"));
+    [
+      ["Observation time", newest.observed_at],
+      ["Reviewer", newest.reviewer],
+      ["Live status (visible replyability)", newest.live_status],
+      ["Observed permalink", newest.permalink],
+      ["Observation, including visible changes or new answers", newest.observation],
+      ["Subreddit rule evidence", (newest.rule_evidence || []).join("; ")],
+      ["Final human decision", newest.final_human_decision],
+    ].forEach(([label, value]) => {
+      current.append(node("p", `${label}: ${value == null || value === "" ? "None" : value}`, "small"));
+    });
+    host.append(current);
+    if (checks.length > 1) {
+      host.append(node("strong", "Earlier manual-check history"));
+      checks.slice(0, -1).forEach((check) => {
+        host.append(node("p", `${check.observed_at} · ${check.reviewer} · ${check.live_status} · final_human_decision: ${check.final_human_decision ?? "None"}`, "history"));
+      });
+    }
+  };
+  const renderConversation = (candidate) => {
+    const liveStatus = candidate.live_status ?? "live_unverified";
+    text("archive-live-status", `Archive verdict: ${candidate.archive_verdict ?? "unreviewed"} · Live status: ${liveStatus}`);
+    manualCheckHistory(candidate);
+    text("identity", `${candidate.subreddit} · selected target ${candidate.reply_target_fullname}`);
+    const warnings = candidate.coverage_warnings || [];
+    text("coverage-warning", warnings.length ? `Archive coverage warning: ${warnings.join("; ")}. A potential reply is blocked by incomplete capture coverage.` : "");
+    $("coverage-warning").hidden = !warnings.length;
+    const notes = candidate.archive_content_notes || [];
+    text("archive-content-note", notes.length ? `Archived content note: ${notes.join("; ")}` : "");
+    $("archive-content-note").hidden = !notes.length;
+    text("coverage", `Captured context: ${candidate.context_complete ? "complete for scanned sources" : "incomplete"}. ${candidate.root_removed ? "Submission historically removed. " : ""}No archive field establishes current Reddit status.`);
+    const scopes = $("scopes");
+    scopes.replaceChildren();
+    (candidate.source_usage_scopes || []).forEach((scope) => scopes.append(node("p", `${scope.source_id}: ${scope.usage_scope || "unavailable"}${scope.scope_warning ? ` (${scope.scope_warning})` : ""}`)));
+    const reviews = $("review-history");
+    reviews.replaceChildren();
+    (candidate.review_history || []).forEach((review) => {
+      reviews.append(node("p", `${review.reviewed_at} · ${review.verdict}: ${review.reason}`, "history"));
+    });
+    const thread = $("thread");
+    thread.replaceChildren();
+    const messages = candidate.messages || [];
+    const byName = new Map(messages.map((message) => [message.fullname, message]));
+    const children = new Map();
+    const roots = [];
+    messages.forEach((message) => {
+      const parent = message.parent_fullname;
+      if (!parent || !byName.has(parent)) {
+        roots.push(message);
+      } else {
+        if (!children.has(parent)) children.set(parent, []);
+        children.get(parent).push(message);
+      }
+    });
+    const ordered = [];
+    const visited = new Set();
+    const visit = (message, depth, missingParent = false) => {
+      if (visited.has(message.fullname)) return;
+      visited.add(message.fullname);
+      ordered.push({ message, depth, missingParent });
+      (children.get(message.fullname) || []).forEach((child) => visit(child, depth + 1));
+    };
+    roots.forEach((message) => visit(message, 0, Boolean(message.parent_fullname && !byName.has(message.parent_fullname))));
+    messages.forEach((message) => visit(message, 0, Boolean(message.parent_fullname && !byName.has(message.parent_fullname))));
+    ordered.forEach(({ message, depth, missingParent }) => {
+      const selected = message.fullname === candidate.reply_target_fullname;
+      const article = node("article", "", `message branch${selected ? " selected" : ""}`);
+      article.style.setProperty("--depth", String(depth));
+      article.append(node("strong", `${selected ? "Selected reply target: " : "Captured message: "}${message.fullname}`));
+      if (missingParent) article.append(node("p", `Ancestor missing: ${message.parent_fullname || "submission root"} was not captured.`, "warning small"));
+      if (message.raw_title) article.append(node("strong", message.raw_title));
+      article.append(node("div", message.raw_body || "[No captured text]", "body"));
+      const note = notes.find((item) => item.startsWith(`${message.fullname}: `));
+      if (note) article.append(node("p", `Archived content note: ${note.slice(message.fullname.length + 2)}`, "notice small"));
+      const detail = node("details", "");
+      detail.append(node("summary", "Archive status and provenance"));
+      detail.append(node("p", `Parent: ${message.parent_fullname || "not recorded"}; archived status: ${JSON.stringify(message.archived_status || {})}`));
+      detail.append(node("p", `Source: ${(message.provenance || []).map((source) => `${source.source_id}:${source.line_number}`).join("; ") || "unavailable"}`));
+      article.append(detail);
+      thread.append(article);
+    });
+    const chain = $("parent-chain");
+    chain.replaceChildren();
+    const ancestors = candidate.parent_chain || [];
+    let missingAncestor = false;
+    [...ancestors].reverse().forEach((fullname) => {
+      const item = node("li", fullname);
+      if (!byName.has(fullname)) {
+        item.append(document.createTextNode(" (ancestor missing)"));
+        missingAncestor = true;
+      }
+      chain.append(item);
+    });
+    if (!ancestors.length || missingAncestor) {
+      chain.append(node("li", ancestors.length ? "One or more ancestors were not captured." : "Ancestor chain unavailable; one or more ancestors may be missing."));
+    }
+  };
+  const renderForm = (candidate) => {
+    $("review-form").reset();
+    const review = latest(candidate);
+    const outcome = outcomeFor(review);
+    const checked = document.querySelector(`input[name="outcome"][value="${outcome}"]`);
+    if (checked) checked.checked = true;
+    const skip = skipFor(review);
+    $("skip-reason").value = skip;
+    text("saved-state", completed(candidate) ? "Saved decision: " + review.verdict.replaceAll("_", " ") + ". Saving again will add a revision." : review ? "An earlier quick choice is not a completed review." : "No saved review yet.");
+    const claimHost = $("claim-options");
+    claimHost.replaceChildren(node("legend", "Which verified claim supports the fit?"));
+    const savedClaim = review?.supporting_claim_ids?.length === 1 ? review.supporting_claim_ids[0] : "";
+    verifiedClaims(candidate).forEach((claim) => {
+      const label = node("label", "", "choice");
+      const input = node("input", "");
+      input.type = "radio";
+      input.name = "claim";
+      input.value = claim.claim_id;
+      input.checked = claim.claim_id === savedClaim;
+      const content = node("span", claim.statement || claim.claim_id);
+      content.append(node("small", `Limits: ${(claim.constraints || []).join("; ") || "none listed"}`));
+      if (claim.evidence_ref) content.append(node("small", `Evidence: ${claim.evidence_ref}`));
+      if (claim.version_scope) content.append(node("small", `Version scope: ${claim.version_scope}`));
+      label.append(input, content);
+      claimHost.append(label);
+    });
+    const history = $("draft-history");
+    history.replaceChildren();
+    const drafts = candidate.draft_history || [];
+    text("draft-history-availability", candidate.draft_history_available ? "Draft history available." : "Draft history unavailable.");
+    if (!drafts.length) {
+      history.append(node("p", "No drafts recorded", "muted small"));
+    } else {
+      drafts.forEach((record) => {
+        const item = node("article", "", "history");
+        item.append(node("strong", `Record type: ${record.record_type || "not recorded"}; outcome: ${record.outcome || "not recorded"}`));
+        [
+          ["Validation status", record.validation_status],
+          ["Validation message", record.validation_message],
+          ["Qualification prompt version", record.qualification_prompt_version],
+          ["Draft prompt version", record.draft_prompt_version],
+          ["Model version", record.model_version],
+          ["Operator affiliation", record.operator_affiliation],
+          ["Abstention reasons", (record.abstention_reasons || []).join("; ") || "none recorded"],
+        ].forEach(([label, value]) => {
+          item.append(node("p", `${label}: ${value || "not recorded"}`, "small"));
+        });
+        if (record.display_text) item.append(node("p", record.display_text, "body"));
+        history.append(item);
+      });
+    }
+    const allowed = potentialAllowed(candidate);
+    const potential = document.querySelector('input[name="outcome"][value="provisional_candidate"]');
+    potential.disabled = !allowed;
+    if (!allowed && potential.checked) potential.checked = false;
+    text("potential-warning", allowed ? "" : "A potential reply is unavailable: captured context or verified product claims are incomplete. Choose Skip or Not sure.");
+    $("potential-warning").hidden = allowed;
+    const sources = $("answer-source");
+    sources.replaceChildren(new Option("Choose the captured message", ""));
+    const counts = new Map();
+    (candidate.messages || []).forEach((message) => counts.set(message.fullname, (counts.get(message.fullname) || 0) + 1));
+    (candidate.messages || []).forEach((message) => {
+      if (message.fullname === candidate.reply_target_fullname || counts.get(message.fullname) !== 1) return;
+      sources.append(new Option(`${message.fullname} · ${(message.raw_title || message.raw_body || "No captured text").replace(/\s+/g, " ").slice(0, 85)}`, message.fullname));
+    });
+    const answer = review?.source_message_evidence_ids?.find((value) => value !== candidate.reply_target_fullname);
+    sources.value = answer || "";
+    const base = outcome === "reject" ? choices[skip]?.reason : outcome === "needs_context" ? "Not enough evidence or judgment to decide." : "";
+    $("note").value = review && !review.reason.startsWith("Quick triage: ") ? (base && review.reason.startsWith(base) ? review.reason.slice(base.length).trim() : review.reason) : "";
+    text("form-message", "");
+    dirty = false;
+    updateFields();
+  };
+  const countDone = () => data.candidates.filter(completed).length;
+  const renderDone = () => {
+    $("queue").hidden = true;
+    $("done").hidden = false;
+      
+    $("reviewer-block").hidden = true;
+    
+    text("progress-text", `All ${data.candidates.length} conversations reviewed`);
+    $("progress").value = data.candidates.length;
+    const summary = $("summary");
+    summary.replaceChildren();
+    const liveTargets = $("live-target");
+    liveTargets.replaceChildren();
+    data.candidates.forEach((candidate, position) => {
+      const verdict = latest(candidate)?.verdict || "unreviewed";
+      const item = node("li", "");
+      item.append(node("span", `${candidate.subreddit} · ${verdict.replaceAll("_", " ")}`));
+      item.append(node("span", `Live status: ${candidate.live_status ?? "live_unverified"}`));
+      const button = node("button", "Review again", "secondary");
+      button.type = "button";
+      button.addEventListener("click", () => { index = position; revisiting = true; render(); window.scrollTo(0, 0); });
+      item.append(button);
+      summary.append(item);
+      if (verdict === "provisional_candidate") liveTargets.append(new Option(`${candidate.subreddit} · ${candidate.reply_target_fullname}`, String(position)));
+    });
+    $("live-details").hidden = !liveTargets.length;
+    if (liveTargets.length) setLivePermalink();
+  };
+  const render = () => {
+    $("empty").hidden = data.candidates.length !== 0;
+    $("progress-panel").hidden = data.candidates.length === 0;
+    if (!data.candidates.length) { $("queue").hidden = true; $("done").hidden = true; return; }
+    const done = countDone();
+    $("progress").max = data.candidates.length;
+    $("progress").value = done;
+    if (done === data.candidates.length && !revisiting) { renderDone(); return; }
+    $("done").hidden = true;
+    $("queue").hidden = false;
+    $("reviewer-block").hidden = false;
+    text("progress-text", `Conversation ${index + 1} of ${data.candidates.length} · ${done} saved`);
+    const candidate = data.candidates[index];
+    $("previous").hidden = index === 0;
+    renderConversation(candidate);
+    renderForm(candidate);
+  };
+  const load = async () => {
+    const response = await fetch("/api/bootstrap", { cache: "no-store" });
+    if (!response.ok) throw new Error(`Could not load conversations (${response.status}).`);
+    const snapshot = await response.json();
+    data.candidates = snapshot.candidates || [];
+    data.profile = snapshot.profile;
+    if (!$("reviewer").value.trim()) {
+      const reviewer = data.candidates.flatMap((candidate) => candidate.review_history || []).at(-1)?.reviewer;
+      if (reviewer) $("reviewer").value = reviewer;
+    }
+  };
+  const setLivePermalink = () => {
+    const candidate = data.candidates[Number($("live-target").value)];
+    $("permalink").value = candidate?.target_permalink || "";
+  };
+  const fail = (message) => { text("form-message", message); $("form-message").scrollIntoView({ block: "nearest" }); };
+  $("jump-to-answer").addEventListener("click", () => {
+    $("question-title").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    $("question-title").setAttribute("tabindex", "-1");
+    $("question-title").focus({ preventScroll: true });
+  });
+  document.querySelectorAll('input[name="outcome"]').forEach((input) => input.addEventListener("change", updateFields));
+  $("skip-reason").addEventListener("change", updateFields);
+  $("review-form").addEventListener("input", () => { dirty = true; text("form-message", ""); });
+  $("review-form").addEventListener("change", () => { dirty = true; text("form-message", ""); });
+  $("previous").addEventListener("click", () => {
+    if (dirty && !confirm("Leave this conversation without saving your changes?")) return;
+    index -= 1;
+    render();
+    window.scrollTo(0, 0);
+  });
+  $("review-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (saving) return;
+    const reviewer = $("reviewer").value.trim();
+    if (!reviewer) { fail("Enter your name above before saving."); $("reviewer").focus(); return; }
+    const candidate = data.candidates[index];
+    const outcome = selectedOutcome();
+    const note = $("note").value.trim();
+    const reasonKey = $("skip-reason").value;
+    if (outcome === "reject" && !choices[reasonKey]) { fail("Choose why you want to skip this conversation."); return; }
+    if (outcome === "reject" && reasonKey === "answered" && !$("answer-source").value) { fail("Select the captured message that answered it, or choose Not sure."); return; }
+    if (outcome === "reject" && reasonKey === "other" && !note) { fail("Explain why you want to skip this conversation."); return; }
+    if (outcome === "provisional_candidate" && !potentialAllowed(candidate)) { fail("This archive cannot support a potential reply. Choose Not sure or Skip."); return; }
+    const claim = document.querySelector('input[name="claim"]:checked')?.value;
+    if (outcome === "provisional_candidate" && !claim) { fail("Select a verified claim that supports the fit."); return; }
+    if (outcome === "provisional_candidate" && !note) { fail("Explain why the unanswered need fits this claim."); return; }
+    const skip = choices[reasonKey];
+    const codes = outcome === "reject" ? [skip.code] : outcome === "needs_context" ? ["product_fit_unverified"] : ["author_has_current_need"];
+    if (!candidate.context_complete && !codes.includes("context_incomplete")) codes.push("context_incomplete");
+    const target = candidate.reply_target_fullname;
+    const capturedTarget = (candidate.messages || []).filter((message) => message.fullname === target).length === 1;
+    const evidence = capturedTarget ? [target] : [];
+    if (outcome === "reject" && reasonKey === "answered") evidence.push($("answer-source").value);
+    const base = outcome === "reject" ? skip.reason : "Not enough evidence or judgment to decide.";
+    const payload = {
+      app_id: candidate.app_id,
+      thread_fullname: candidate.thread_fullname,
+      reply_target_fullname: target,
+      source_message_evidence_ids: evidence,
+      reviewer,
+      author_need: outcome === "provisional_candidate" ? "first_person_relevant" : outcome === "reject" ? (skip.author_need || "unclear") : "unclear",
+      answered_in_available_context: outcome === "provisional_candidate" ? "no" : outcome === "reject" ? (skip.answered_in_available_context || "unknown") : "unknown",
+      product_fit: outcome === "provisional_candidate" ? "compatible" : outcome === "reject" ? (skip.product_fit || "not_evaluated") : "not_evaluated",
+      supporting_claim_ids: outcome === "provisional_candidate" ? [claim] : [],
+      verdict: outcome,
+      reason_codes: codes,
+      reason: outcome === "provisional_candidate" ? note : `${base}${note ? ` ${note}` : ""}`
+    };
+    saving = true;
+    $("save-next").disabled = true;
+    text("save-next", "Saving…");
+    text("form-message", "");
+    try {
+      const response = await fetch("/api/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Save failed (${response.status}).`);
+      const previous = index;
+      await load();
+      const next = data.candidates.findIndex((_, position) => position > previous && !completed(data.candidates[position]));
+      index = next >= 0 ? next : data.candidates.findIndex((entry) => !completed(entry));
+      if (index < 0) index = previous;
+      revisiting = false;
+      render();
+      window.scrollTo(0, 0);
+    } catch (error) { fail(error.message); }
+    finally { saving = false; $("save-next").disabled = false; text("save-next", "Save & next"); }
+  });
+  $("live-target").addEventListener("change", setLivePermalink);
+  $("manual-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (saving) return;
+    const candidate = data.candidates[Number($("live-target").value)];
+    const reviewer = $("reviewer").value.trim();
+    if (!candidate || !reviewer) { text("manual-message", "Enter your name before saving a live check."); return; }
+    const payload = {
+      app_id: candidate.app_id, thread_fullname: candidate.thread_fullname,
+      reply_target_fullname: candidate.reply_target_fullname, reviewer,
+      live_status: $("live").value, permalink: $("permalink").value || null,
+      observation: $("observation").value,
+      rule_evidence: $("rules").value.split("\n").map((line) => line.trim()).filter(Boolean),
+      final_human_decision: $("final-decision").value || null
+    };
+    saving = true;
+    text("manual-message", "Saving…");
+    try {
+      const response = await fetch("/api/manual-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Save failed (${response.status}).`);
+      text("manual-message", "Observation saved. Nothing was posted.");
+    } catch (error) { text("manual-message", error.message); }
+    finally { saving = false; }
+  });
+  load().then(() => {
+    index = data.candidates.findIndex((candidate) => !completed(candidate));
+    if (index < 0) index = 0;
+    render();
+  }).catch((error) => text("load-error", error.message));
+})();
+</script>
+</body>
+</html>

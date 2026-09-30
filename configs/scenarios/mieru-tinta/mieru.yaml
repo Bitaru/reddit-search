@@ -1,0 +1,98 @@
+scenarios:
+  - schema_version: 1
+    scenario_id: mieru.no_bank_link
+    scenario_version: 2
+    description: Find people who want to track their spending without giving a finance app access to bank credentials or a bank feed.
+    lexical_queries:
+      - "expense tracker bank login"
+      - "expense app no bank"
+      - "spending tracker bank sync"
+      - "track expenses without linking"
+    semantic_queries:
+      - "I want to track my spending without connecting my bank account to an app."
+      - "I do not want to share my bank login or financial activity with an expense tracking service."
+    negative_example_reasons:
+      - "The author requires automatic bank feeds or a bank-login connection."
+      - "The post only recommends or advertises another finance app without describing a need."
+
+  - schema_version: 1
+    scenario_id: mieru.statement_import
+    scenario_version: 2
+    description: Find people who want to import bank statement transactions instead of entering every purchase by hand.
+    lexical_queries:
+      - "import bank statement expenses"
+      - "expense tracker csv import"
+      - "pdf statement transactions"
+      - "manual transactions statement"
+      - "bank statement tracker app"
+    semantic_queries:
+      - "I do not want to link my bank, but I need to import my statement instead of typing every expense."
+      - "I have CSV or PDF statements and want to review the transactions before adding them to my spending ledger."
+    negative_example_reasons:
+      - "The author needs an automatic live bank feed instead of file import."
+      - "The author requires scanned-image PDF support or automatic acceptance without review."
+
+  - schema_version: 1
+    scenario_id: mieru.shared_tracking
+    scenario_version: 3
+    description: Find partners who want to see personal and joint spending separately in a shared expense ledger, without giving a finance company their bank logins.
+    lexical_queries:
+      - "shared expenses partner"
+      - "couple expense tracker"
+      - "separate spending partner"
+      - "personal joint expenses"
+    semantic_queries:
+      - "My partner and I want to track our own and joint expenses separately while sharing the same ledger."
+      - "I want to see just my transactions or both of our accounts without connecting our banks to an app."
+    negative_example_reasons:
+      - "The author requires separate budget targets, allocations, or spending-limit alerts rather than filtered spending history."
+      - "The author only needs to split a one-off bill or settle debts with a group."
+      - "The author refuses a user-controlled cloud folder for sharing the ledger."
+
+  - schema_version: 1
+    scenario_id: mieru.apple_pay_capture
+    scenario_version: 1
+    description: Find iPhone users who forget to log Apple Pay purchases and want a quick reviewable entry after paying.
+    lexical_queries:
+      - "apple pay expense tracker"
+      - "shortcut log apple pay"
+      - "apple pay spending shortcut"
+      - "track apple pay purchases"
+    semantic_queries:
+      - "I pay with Apple Pay and forget to record those purchases in my expense tracker."
+      - "I want a Shortcut to prefill a new expense after I pay, so I can review it before saving."
+    negative_example_reasons:
+      - "The author requires a live bank feed or automatic saving without a Shortcut and review."
+      - "The author needs an Android, card-reader, or merchant Apple Pay integration."
+
+  - schema_version: 1
+    scenario_id: mieru.multi_currency
+    scenario_version: 3
+    description: Find people who track personal spending across accounts in different currencies and need to preserve the original amounts.
+    lexical_queries:
+      - "expenses different currencies"
+      - "track multiple currencies"
+      - "track foreign currency spending"
+      - "accounts different currency expense"
+    semantic_queries:
+      - "I spend from accounts in different currencies and want to keep each transaction in its original currency."
+      - "I need to track travel and everyday expenses across currencies without losing the amounts I actually paid."
+    negative_example_reasons:
+      - "The author needs guaranteed live exchange rates, FX trading, or payments instead of tracking and snapshot-based reports."
+      - "The author is discussing business accounting or cross-border payment processing."
+
+  - schema_version: 1
+    scenario_id: mieru.recurring_costs
+    scenario_version: 1
+    description: Find people who need to see recurring personal expenses and know which schedules are active or paused.
+    lexical_queries:
+      - "track recurring expenses"
+      - "monthly bills spending tracker"
+      - "recurring expenses tracker"
+      - "subscription spending overview"
+    semantic_queries:
+      - "I want to see which recurring expenses are still active and how much they cost me."
+      - "I need to track monthly payments alongside my other spending without forgetting a paused one."
+    negative_example_reasons:
+      - "The author requires the app to cancel subscriptions or negotiate bills."
+      - "The author wants merchant-side recurring billing rather than personal expense tracking."

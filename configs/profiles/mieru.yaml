@@ -1,0 +1,105 @@
+app_id: mieru
+profile_version: 2
+verified_at: "2026-09-26T10:00:22Z"
+verification_owner: "Mieru developer Vitaly Danilov; operator confirmed the published facts"
+verification_status: verified
+synthetic: false
+platforms:
+  - claim_id: mieru.iphone_app
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "Mieru is an iPhone app that requires iOS 18.6 or later."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "The published listing says designed for iPhone; do not promise an Android, web, or native Mac app."
+capabilities:
+  - claim_id: mieru.tracking_without_bank_link
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "Mieru tracks expenses without connecting to your bank or asking for bank credentials."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "There is no automatic bank feed; users enter transactions or choose supported statement files."
+  - claim_id: mieru.statement_import
+    status: verified
+    evidence_ref: https://mieru.bitaru.com/privacy/
+    statement: "Mieru can import supported CSV and text-based PDF bank statements on your iPhone for review before updating the ledger."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "PDF import is limited to supported text-based statements; on-device AI support depends on device compatibility."
+      - "Users review proposed transaction changes; there is no live bank feed."
+  - claim_id: mieru.shared_ledger
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "Mieru lets partners share an encrypted expense ledger through a shared iCloud Drive or Google Drive folder."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Both people need access to the shared folder and ledger passphrase; cloud storage is in their own provider account."
+      - "Shared expense tracking and charts do not establish a feature for setting spending limits or allocating budgets."
+  - claim_id: mieru.account_scoped_spending
+    status: verified
+    evidence_ref: ../mieru/functionality.md#L41-L49
+    statement: "Mieru lets you select one or more accounts to see their transactions and spending reports separately or together."
+    version_scope: "Source inventory 2026-09-26 (project build 1.1.1; App Store 1.1.0 not device-tested)"
+    constraints:
+      - "Create separate accounts for each person's and joint spending, then select the accounts to view; this is a filter within one shared ledger, not independent private ledgers."
+      - "Views show recorded transactions and reports, not individual or shared budget targets, spending limits, or budget allocations."
+      - "Confirm the account filter in the installed App Store version before making this claim in a public reply."
+  - claim_id: mieru.apple_pay_capture
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "After setting up a Shortcut, an Apple Pay payment can open a prefilled expense in Mieru for review."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "The Shortcut must be set up by the user; the expense is not saved automatically."
+  - claim_id: mieru.multi_currency_accounts
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "Mieru tracks spending across accounts in their original currencies."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Saved dated exchange-rate snapshots can convert totals when configured; do not imply guaranteed live rates, FX trading, or conversion when rates are missing."
+  - claim_id: mieru.currency_reports
+    status: verified
+    evidence_ref: ../mieru/functionality.md#L35-L39
+    statement: "Mieru can convert cross-currency spending totals using saved exchange-rate snapshots."
+    version_scope: "Source inventory 2026-09-26 (project build 1.1.1; App Store 1.1.0 not device-tested)"
+    constraints:
+      - "Set a base currency and obtain rates; a missing rate leaves a visible incomplete-total warning rather than an invented conversion."
+      - "Optional daily rate refresh requires network access; offline calculations use saved snapshots, not live market quotes."
+  - claim_id: mieru.recurring_expenses
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "Mieru tracks recurring expenses and shows which schedules are active or paused."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "This is tracking, not cancellation or negotiation of subscriptions."
+  - claim_id: mieru.spending_reports
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "Mieru shows spending charts and category breakdowns for selected periods."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Reports describe recorded spending; do not imply forward-looking budget planning or spending-limit alerts."
+  - claim_id: mieru.encrypted_backup
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/mieru-multi-currency-tracker/id6787025375?l=en-GB
+    statement: "Mieru can export an encrypted ledger backup and export transaction data as CSV."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Keep the backup file and passphrase for full recovery; CSV export does not preserve the complete ledger."
+  - claim_id: mieru.optional_biometric_lock
+    status: verified
+    evidence_ref: ../mieru/functionality.md#L14-L18
+    statement: "Mieru offers an optional biometric lock on compatible iPhones."
+    version_scope: "Source inventory 2026-09-26 (project build 1.1.1; App Store 1.1.0 not device-tested)"
+    constraints:
+      - "Biometrics protect app access, not recovery of a lost ledger passphrase."
+limitations:
+  - claim_id: mieru.no_developer_hosted_ledger
+    status: verified
+    evidence_ref: https://mieru.bitaru.com/privacy/
+    statement: "Mieru stores your ledger on your iPhone or in your own iCloud Drive or Google Drive account, not on Mieru's servers."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Cloud sync is optional and depends on a user's own provider account and sharing settings."

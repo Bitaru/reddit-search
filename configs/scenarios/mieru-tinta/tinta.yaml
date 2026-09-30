@@ -1,0 +1,111 @@
+scenarios:
+  - schema_version: 1
+    scenario_id: tinta.notes_to_line_items
+    scenario_version: 2
+    description: Find people who turn rough notes from a completed job into itemized client invoices without retyping each charge.
+    lexical_queries:
+      - "job notes invoice"
+      - "work notes invoice"
+      - "invoice from notes"
+      - "invoice line items manually"
+    semantic_queries:
+      - "I write down what I did at a job and need those notes turned into invoice lines I can check and edit."
+      - "I forget billable parts and hours when I retype my field notes into an invoice later."
+    negative_example_reasons:
+      - "The author needs work-order management, not an invoice from completed work."
+      - "The author requires automatic invoicing without reviewing the amounts."
+
+  - schema_version: 1
+    scenario_id: tinta.estimate_to_invoice
+    scenario_version: 1
+    description: Find people who need to turn an accepted estimate or quote into an invoice while keeping the original document.
+    lexical_queries:
+      - "estimate convert invoice"
+      - "quote to invoice"
+      - "invoice from estimate"
+      - "approved quote invoice"
+    semantic_queries:
+      - "After my client accepts an estimate, I want to make an invoice without typing the same work again."
+      - "I need to keep the original quote in my records after turning it into an invoice."
+    negative_example_reasons:
+      - "The author only wants a cost estimate and does not issue invoices."
+      - "The author needs a team approval or accounting-system sync workflow."
+
+  - schema_version: 1
+    scenario_id: tinta.field_service_mobile
+    scenario_version: 3
+    description: Find solo service workers who need to prepare and share an invoice PDF from an iPhone after a client job.
+    lexical_queries:
+      - "invoice from phone job"
+      - "contractor invoice phone"
+      - "invoice after service job"
+      - "send invoice from iphone"
+    semantic_queries:
+      - "I finish work at a customer's home and want to make their invoice before I leave."
+      - "I need to send a client a professional invoice from my iPhone while I am still on the job."
+    negative_example_reasons:
+      - "The author needs an Android, desktop, or pre-iOS-26 solution, or invoices in a currency other than USD or CAD."
+      - "The author requires direct email delivery, dispatch, scheduling, or a multi-user field-service platform."
+
+  - schema_version: 1
+    scenario_id: tinta.occasional_invoices
+    scenario_version: 2
+    description: Find people who issue only a few invoices and cannot justify an ongoing subscription or account-heavy service.
+    lexical_queries:
+      - "invoice app no subscription"
+      - "occasional invoices app"
+      - "invoice software monthly fee"
+      - "one time invoice app"
+    semantic_queries:
+      - "I invoice clients only now and then and do not want to pay a monthly fee for it."
+      - "I need a simple invoice app without signing up for another billing service."
+    negative_example_reasons:
+      - "The author requires a permanently free unlimited invoicing product."
+      - "The author needs recurring automatic billing rather than making occasional invoices."
+
+  - schema_version: 1
+    scenario_id: tinta.simple_documents
+    scenario_version: 2
+    description: Find people who have outgrown Word or spreadsheet invoice templates and need a presentable PDF for clients.
+    lexical_queries:
+      - "invoice spreadsheet template"
+      - "invoice in word"
+      - "professional invoice pdf"
+      - "invoice template logo"
+    semantic_queries:
+      - "I make invoices in a spreadsheet and want a cleaner PDF I can send to clients."
+      - "I want my invoice to look like my business without editing a Word template for every job."
+    negative_example_reasons:
+      - "The author is shopping for a free PDF template without an invoicing workflow."
+      - "The author needs accounting or tax filing rather than a client-facing document."
+
+  - schema_version: 1
+    scenario_id: tinta.job_photos
+    scenario_version: 2
+    description: Find service workers who need to attach existing job photos and captions to an invoice PDF.
+    lexical_queries:
+      - "job photos invoice"
+      - "attach photos invoice"
+      - "invoice with pictures work"
+      - "before after photos invoice"
+    semantic_queries:
+      - "I want to show the customer photos of the finished work on the invoice I send."
+      - "I need to attach captioned job photos to my invoice instead of sending them separately."
+    negative_example_reasons:
+      - "The author only needs photo storage or work-order documentation, not invoicing."
+      - "The author needs in-app camera capture, photo-to-invoice scanning, or receipt OCR rather than PDF attachments."
+
+  - schema_version: 1
+    scenario_id: tinta.private_invoicing
+    scenario_version: 1
+    description: Find people who want to keep invoices and client details on their phone instead of uploading them to a billing service.
+    lexical_queries:
+      - "invoice app no account"
+      - "offline invoice client data"
+      - "invoice app no cloud"
+      - "private invoice app"
+    semantic_queries:
+      - "I want to make invoices without uploading my clients' details to a company account."
+      - "I need an invoice app that keeps the records on my iPhone unless I choose to export them."
+    negative_example_reasons:
+      - "The author requires cloud-based team access, automatic online invoice delivery, or an off-device backup."

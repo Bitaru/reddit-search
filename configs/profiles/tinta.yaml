@@ -1,0 +1,110 @@
+app_id: tinta
+profile_version: 1
+verified_at: "2026-09-26T10:00:22Z"
+verification_owner: "Tinta developer Vitaly Danilov; operator-provided functionality inventory"
+verification_status: verified
+synthetic: false
+platforms:
+  - claim_id: tinta.iphone_ios26
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta is an iPhone app that requires iOS 26 or later."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Do not promise an Android app, web app, dedicated iPad app, or native Mac app."
+capabilities:
+  - claim_id: tinta.notes_to_line_items
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta can turn a job note into editable invoice line items using Apple's on-device model."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Requires a compatible device with the on-device language model available; the user must review generated items and prices."
+      - "This is job-note text, not voice recording, camera scanning, or automatic approval of charges."
+  - claim_id: tinta.manual_drafts
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta also lets you create and edit an invoice or estimate manually when on-device generation is unavailable."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "The manual path creates an empty draft; it does not extract billable items without the model."
+  - claim_id: tinta.estimate_to_invoice
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta can convert an estimate into a new draft invoice while keeping the original estimate."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Conversion does not send the invoice or carry the estimate's requested deposit over as a paid invoice deposit."
+  - claim_id: tinta.iphone_pdf_sharing
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta lets you preview an invoice PDF and share it from your iPhone using the iOS Share Sheet."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "The user chooses a share destination; Tinta does not email the client directly or prove delivery."
+  - claim_id: tinta.branded_pdf
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta can put your business details, logo, tax, discounts, payment terms, and a signature line on a PDF invoice."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "The PDF appearance has specific controls, not an unrestricted document-template editor or automatic tax filing."
+  - claim_id: tinta.job_photo_attachments
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta can include selected, captioned job photos in an invoice PDF."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Photos come from the photo library; there is no in-app camera capture, receipt OCR, or image-to-invoice generation."
+  - claim_id: tinta.local_records
+    status: verified
+    evidence_ref: https://tinta.bitaru.com/privacy/
+    statement: "Tinta keeps invoices, estimates, client details, and job photos on the iPhone without a Tinta account or hosted backend."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Exports and PDFs leave the device only when the user chooses a share destination; there is no live team collaboration or cloud sync."
+  - claim_id: tinta.invoice_status
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta tracks invoices as Draft, Sent, or Paid."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "The Paid status is a manual record; Tinta does not collect payments or reconcile a bank account."
+  - claim_id: tinta.data_export
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta can export and re-import invoice and estimate records as CSV files."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "CSV is not a full app backup: images, settings, and linked estimate conversions are not preserved."
+  - claim_id: tinta.local_backups
+    status: verified
+    evidence_ref: https://apps.apple.com/pt/app/tinta-ai-invoice-maker/id6787071771?l=en-GB
+    statement: "Tinta keeps recent automatic backups on the iPhone and lets you restore one in Settings."
+    version_scope: "App Store version 1.1.0"
+    constraints:
+      - "Backups remain on that device; restoring replaces the current data and does not provide cloud or off-device recovery."
+  - claim_id: tinta.shortcuts_creation
+    status: verified
+    evidence_ref: ../invoice-generator/functionality.md#L18-L21
+    statement: "Tinta can open an invoice or estimate creation flow from Siri or Shortcuts using a dictated job note."
+    version_scope: "Source inventory 2026-09-26 (current app source; release behavior not device-tested)"
+    constraints:
+      - "The intent passes text to the foreground app; it does not create or send a finished invoice in the background."
+pricing_claims:
+  - claim_id: tinta.free_then_pro
+    status: verified
+    evidence_ref: ../invoice-generator/functionality.md#L37-L41
+    statement: "Tinta includes ten first-time invoice shares before requiring a one-time Pro purchase for further invoice shares."
+    version_scope: "Source inventory 2026-09-26 (current app source; release behavior not device-tested)"
+    constraints:
+      - "Estimate shares and repeat shares of an already-counted invoice do not use a free slot; there is no monthly subscription."
+      - "Do not promise a particular price, since App Store prices vary by region and can change."
+device_constraints:
+  - claim_id: tinta.us_canada_documents
+    status: verified
+    evidence_ref: ../invoice-generator/functionality.md#L7-L9
+    statement: "Tinta's business setup supports the United States in USD and Canada in CAD."
+    version_scope: "Source inventory 2026-09-26 (current app source; release behavior not device-tested)"
+    constraints:
+      - "Country selects currency and formatting; there is no independent document-currency or app-language picker."

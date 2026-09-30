@@ -13,6 +13,12 @@ visible instead of being counted as evidence.
 The default runtime is local-only. It blocks Reddit requests, model downloads,
 remote inference, and automatic publishing.
 
+The offline engagement workflow builds bounded archive context, supports
+review and optional local drafting, and writes private handoffs without
+contacting Reddit or publishing replies. See the
+[operator guide](docs/engagement-operator.md) for the eight `engagement`
+commands and their required inputs.
+
 ## Try it first
 
 You need Python 3.12 and [uv](https://docs.astral.sh/uv/).
@@ -117,10 +123,12 @@ can turn verified product claims and user needs into schema-valid scenarios.
 
 ### Record product claims (optional extension)
 
-Product profiles live in `configs/profiles/`. They are only needed for
-claim-bound fit judgments; topic-only runs do not require them. A verified
-claim needs an `evidence_ref`. Constraints tell the reviewer exactly where the
-claim stops.
+Product profiles live in `configs/profiles/`. They are needed for claim-bound
+fit judgments; topic-only runs do not require them. For product-specific
+engagement drafts, each claim used by the draft needs an owner-approved
+plain-language `statement`. This field is not required by the existing label
+workflow. A verified claim also needs an `evidence_ref`. Constraints tell the
+reviewer exactly where the claim stops.
 
 ```yaml
 app_id: yourproduct
@@ -130,6 +138,7 @@ verification_owner: "name or team responsible for verification"
 capabilities:
   - claim_id: yourproduct.verified_claim
     status: verified
+    statement: "Owner-approved plain-language description of the verified behavior."
     evidence_ref: https://example.com/product-evidence
     version_scope: "1.0"
     constraints:
@@ -144,8 +153,8 @@ uv run reddit-search profiles validate --profiles-dir configs/profiles
 
 ## Choose a review path
 
-The CLI supports two related workflows. Pick the one that matches the question
-you are trying to answer.
+The CLI supports three related workflows. Pick the one that matches the
+question you are trying to answer.
 
 ### Review discovery matches
 
@@ -204,6 +213,25 @@ for this bridge yet. After review, use `labels collect`, `labels import`, and
 `evaluation report`; each command's `--help` lists the pool, worksheet, and run
 paths it requires.
 
+### Review archived conversations for engagement
+
+Use the offline `engagement` command group to build a shortlist, assemble
+bounded thread context, review a conversation, optionally draft locally,
+record explicit outcome adjudications, and export a private handoff. It does
+not contact Reddit or publish replies. The eight commands are described in
+the [operator guide](docs/engagement-operator.md); list them with:
+
+```bash
+uv run reddit-search engagement --help
+```
+
+Local drafting requires separately provisioned GGUF weights and the
+noninteractive llama.cpp `llama-completion` executable, not `llama-cli`. The
+versioned qualification and draft prompts separate trusted system instructions
+from source data. Invalid or unsupported output remains an abstention; a draft
+needs human review. A live-page check is required only before optional manual
+posting, not to finish preparation. The pipeline never downloads a model.
+
 ## Optional dense retrieval
 
 Install the semantic dependencies and start local Qdrant:
@@ -243,14 +271,14 @@ remains reproducible.
 ```text
 configs/       runtime limits, sources, discovery rules, scenarios, profiles
 data/          SQLite corpora, Qdrant storage, staging files (generated)
-docs/          implementation status and decision log
+docs/          architecture diagram, engagement operator guide and plan
 reports/       hash-bound run artifacts (generated)
 src/reddit_search/
   cli.py       Typer entry point and command groups
   ingest/      source registration, discovery, hydration, shard readers
   corpus/      lexical corpus building and search
   retrieval/   dense indexing, comparison, reranking
-  review/      blinded cards, queues, worksheets, localhost workspace
+  engagement/ offline shortlist, context, review, drafting and handoff
   evaluation/  pools, labels, metrics, archive audits
   operations/  tombstone propagation and artifact purge
 tests/         offline unit and acceptance tests

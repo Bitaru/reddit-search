@@ -57,3 +57,40 @@ def test_unknown_claim_is_the_default_and_remains_reported() -> None:
 
     assert profile.capabilities[0].status == "unknown"
     assert profile_missing_evidence(profile) == ["mieru.no_bank_link"]
+
+
+def test_product_claim_statement_is_optional_and_owner_supplied() -> None:
+    from reddit_search.contracts import ProductClaim
+
+    legacy = ProductClaim.model_validate({"claim_id": "sample.export"})
+    stated = ProductClaim.model_validate(
+        {
+            "claim_id": "sample.export",
+            "status": "verified",
+            "evidence_ref": "https://example.test/evidence",
+            "statement": "Exports a CSV file for bookkeeping.",
+        }
+    )
+
+    assert legacy.statement is None
+    assert stated.statement == "Exports a CSV file for bookkeeping."
+
+
+def test_verified_claim_still_requires_evidence_with_statement() -> None:
+    from reddit_search.contracts import ProductClaim
+
+    with pytest.raises(ValidationError, match="evidence_ref"):
+        ProductClaim.model_validate(
+            {
+                "claim_id": "sample.export",
+                "status": "verified",
+                "statement": "Exports a CSV file for bookkeeping.",
+            }
+        )
+
+
+def test_product_claim_rejects_undeclared_fields() -> None:
+    from reddit_search.contracts import ProductClaim
+
+    with pytest.raises(ValidationError):
+        ProductClaim.model_validate({"claim_id": "sample.export", "invented": "value"})

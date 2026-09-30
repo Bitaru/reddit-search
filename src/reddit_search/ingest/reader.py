@@ -109,15 +109,17 @@ class ArchiveReader:
             return
 
         decoder = codecs.getincrementaldecoder("utf-8")("strict")
-        buffered_text = ""
+        piece_buffer = ""
         for chunk in self._iter_zstd_chunks(path):
-            buffered_text += decoder.decode(chunk)
-            while "\n" in buffered_text:
-                line, buffered_text = buffered_text.split("\n", maxsplit=1)
-                yield f"{line}\n"
-        buffered_text += decoder.decode(b"", final=True)
-        if buffered_text:
-            yield buffered_text
+            decoded = decoder.decode(chunk)
+            pieces = (piece_buffer + decoded).split("\n")
+            # Splitting once per chunk with a carry avoids quadratic re-slicing.
+            piece_buffer = pieces.pop()
+            for piece in pieces:
+                yield f"{piece}\n"
+        piece_buffer += decoder.decode(b"", final=True)
+        if piece_buffer:
+            yield piece_buffer
 
     def _iter_zstd_chunks(self, path: Path) -> Iterator[bytes]:
         decompressor = zstandard.ZstdDecompressor()

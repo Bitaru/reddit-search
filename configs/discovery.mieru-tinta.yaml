@@ -1,0 +1,47 @@
+# Pilot prefilter only. A two-million-record August sample found mostly product
+# promotions and no confirmed user requests. Review and retune before a full scan.
+rules:
+  - rule_id: expense.no_bank_link
+    required_term_groups:
+      - [expense tracker, budget app, track spending, money tracker, personal finance app]
+      - [bank login, bank link, bank-link, bank connection, bank sync, link bank, connect bank, bank credentials, bank passwords, no bank]
+  - rule_id: expense.statement_import
+    required_term_groups:
+      - [bank statement, credit card statement, csv statement, pdf statement]
+      - [statement import, import statement, import transactions, import csv, import pdf, upload statement]
+  - rule_id: expense.shared_tracking
+    required_term_groups:
+      - [shared household expenses, shared budget, joint budget, couple budget, household spending, track expenses together, budget with partner, expenses with spouse, joint expense tracker]
+  - rule_id: expense.apple_pay_capture
+    required_term_groups:
+      - [apple pay, payment shortcut]
+      - [expense tracker, expense log, track spending, log purchases, spending shortcut]
+  - rule_id: expense.multi_currency
+    required_term_groups:
+      - [multiple currencies, different currencies, foreign currency expenses, multi currency budget, multi-currency expenses, spending across currencies]
+      - [personal expenses, spending, budget, expense tracker, track transactions, travel expenses, personal finance]
+  - rule_id: expense.recurring_costs
+    required_term_groups:
+      - [recurring expenses, recurring costs, recurring spending, monthly bills tracker, subscription spending, track subscriptions]
+      - [tracker, tracking, expense app, budget app, list subscriptions, log expenses, spending app]
+  - rule_id: invoicing.notes_to_line_items
+    required_term_groups:
+      - [notes to invoice, job notes invoice, work notes invoice, invoice from notes, line items from job]
+  - rule_id: invoicing.estimate_to_invoice
+    required_term_groups:
+      - [estimate to invoice, quote to invoice, convert estimate, invoice from quote, invoice from estimate]
+  - rule_id: invoicing.field_service_mobile
+    required_term_groups:
+      - [invoice on phone, invoice from phone, mobile invoicing, invoice onsite, invoice on site, invoice after job, contractor invoice app]
+  - rule_id: invoicing.occasional_invoices
+    required_term_groups:
+      - [invoice app no subscription, invoicing subscription, occasional invoices, few invoices a month, invoice without subscription]
+  - rule_id: invoicing.simple_documents
+    required_term_groups:
+      - [invoice spreadsheet, invoice template, invoice in word, spreadsheet invoices, branded invoice pdf]
+  - rule_id: invoicing.job_photos
+    required_term_groups:
+      - [photos on invoice, invoice with photos, job photos invoice, attach photos to invoice, invoice photos]
+  - rule_id: invoicing.private_invoicing
+    required_term_groups:
+      - [invoice app no account, offline invoicing, private invoice app, local invoice app, invoices on phone only, no cloud invoicing]

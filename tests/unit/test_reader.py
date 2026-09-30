@@ -10,6 +10,13 @@ def write_zstd(path: Path, *frames: bytes) -> None:
     path.write_bytes(b"".join(compressor.compress(frame) for frame in frames))
 
 
+def set_decompressed_chunks(monkeypatch: pytest.MonkeyPatch, reader, *chunks: bytes) -> None:
+    def iter_chunks(_path: Path):
+        yield from chunks
+
+    monkeypatch.setattr(reader, "_iter_zstd_chunks", iter_chunks)
+
+
 def test_reader_recovers_concatenated_frames_and_final_line_without_newline(tmp_path: Path) -> None:
     from reddit_search.ingest.reader import ArchiveReader, SourceSpec
 
@@ -54,6 +61,90 @@ def test_truncated_zstd_cannot_complete_a_manifest(tmp_path: Path) -> None:
     reader = ArchiveReader()
     with pytest.raises(SourceReadError):
         list(reader.iter_records(SourceSpec("comments", source_file, "comment", "2026-09")))
+
+    assert reader.stats.complete is False
+    assert reader.stats.decompression_error is not None
+
+
+def test_reader_splits_lines_across_decompressed_chunk_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from reddit_search.ingest.reader import ArchiveReader
+
+    source_file = tmp_path / "boundary.zst"
+    write_zstd(source_file, b"synthetic compressed fixture")
+
+    first_line = b"first\n"
+    crossing_line = b"x" * (131_072 - len(first_line))
+    raw = first_line + crossing_line + b"\nsecond\nfinal"
+    reader = ArchiveReader()
+    set_decompressed_chunks(monkeypatch, reader, raw[:131_072], raw[131_072:])
+
+    assert list(reader._iter_source_lines(source_file)) == [
+        "first\n",
+        crossing_line.decode() + "\n",
+        "second\n",
+        "final",
+    ]
+
+
+def test_reader_yields_long_line_once_and_quarantines_over_limit(
+    tmp_path: Path,
+) -> None:
+    from reddit_search.ingest.reader import ArchiveReader, SourceSpec
+
+    source_file = tmp_path / "long-line.zst"
+    raw_line = b"x" * 131_073 + b"\n"
+    write_zstd(source_file, raw_line)
+
+    reader = ArchiveReader(max_line_bytes=131_072)
+    assert list(reader._iter_source_lines(source_file)) == [raw_line.decode()]
+
+    records = list(
+        reader.iter_records(
+            SourceSpec("comments", source_file, "comment", "2026-09")
+        )
+    )
+    assert records == []
+    assert reader.stats.lines_seen == 1
+    assert reader.stats.invalid_records == 1
+    assert reader.stats.invalid_line_numbers == [1]
+
+
+def test_reader_preserves_carriage_returns_in_crlf_lines(tmp_path: Path) -> None:
+    from reddit_search.ingest.reader import ArchiveReader
+
+    source_file = tmp_path / "crlf.zst"
+    write_zstd(source_file, b'{"id":"one"}\r\n{"id":"two"}\r\n')
+
+    assert list(ArchiveReader()._iter_source_lines(source_file)) == [
+        '{"id":"one"}\r\n',
+        '{"id":"two"}\r\n',
+    ]
+
+
+def test_reader_raises_for_invalid_utf8_straddling_chunk_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from reddit_search.ingest.reader import ArchiveReader, SourceReadError, SourceSpec
+
+    source_file = tmp_path / "invalid-utf8.zst"
+    write_zstd(source_file, b"synthetic compressed fixture")
+
+    valid = b'{"id":"ok"}\n'
+    prefix = b'{"id":"'
+    padding = b"x" * (131_072 - len(valid) - len(prefix) - 1)
+    first_chunk = valid + prefix + padding + b"\xe2"
+    second_chunk = b'("}\n'
+    reader = ArchiveReader()
+    set_decompressed_chunks(monkeypatch, reader, first_chunk, second_chunk)
+
+    with pytest.raises(SourceReadError):
+        list(
+            reader.iter_records(
+                SourceSpec("comments", source_file, "comment", "2026-09")
+            )
+        )
 
     assert reader.stats.complete is False
     assert reader.stats.decompression_error is not None
